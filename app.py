@@ -1,6 +1,7 @@
 import streamlit as st
 import tempfile
 import os
+from datetime import datetime
 
 try:
     from openai import OpenAI
@@ -18,6 +19,10 @@ st.set_page_config(
 # === INICJALIZACJA SESSION STATE ===
 if "editable_report_area" not in st.session_state:
     st.session_state["editable_report_area"] = ""
+
+# Pamięć na historię ostatnich badań (maksymalnie 10)
+if "reports_history" not in st.session_state:
+    st.session_state["reports_history"] = []
 
 # === ODCZYT KLUCZA Z SECRETS ===
 api_key = None
@@ -56,6 +61,24 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+# Funkcja pomocnicza do dodawania opisu do historii
+def add_to_history(report_text):
+    if report_text and report_text.strip():
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        snippet = report_text[:35].replace("\n", " ") + "..."
+        entry = {
+            "time": timestamp,
+            "snippet": snippet,
+            "text": report_text
+        }
+        # Dodajemy na początek listy
+        st.session_state["reports_history"].insert(0, entry)
+        # Ograniczamy historię do 10 ostatnich wpisów
+        st.session_state["reports_history"] = st.session_state["reports_history"][:10]
+
+# ==========================================
+# SIDEBAR: USTAWIENIA + HISTORIA 10 BADAŃ
+# ==========================================
 with st.sidebar:
     st.header("⚙️ Ustawienia Pacjenta")
     plec = st.radio(
@@ -69,6 +92,22 @@ with st.sidebar:
         key="plec_pacjenta"
     )
     dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
+
+    st.markdown("---")
+    st.header("📜 Historia ostatnich badań")
+    
+    if st.session_state["reports_history"]:
+        for i, item in enumerate(st.session_state["reports_history"]):
+            label = f"🕒 {item['time']} - {item['snippet']}"
+            if st.button(label, key=f"hist_{i}"):
+                st.session_state["editable_report_area"] = item["text"]
+                st.rerun()
+
+        if st.button("🗑️ Wyczyść historię"):
+            st.session_state["reports_history"] = []
+            st.rerun()
+    else:
+        st.caption("Brak zapisanych badań w obecnej sesji.")
 
 tryb = st.radio(
     "Wybierz tryb pracy:",
@@ -128,7 +167,6 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + Ścisły Szablon Medyc
                     if tmp_path and os.path.exists(tmp_path):
                         os.remove(tmp_path)
 
-            # KROK 2: Precyzyjne formatowanie wg exact szablonu
             if raw_transcript and len(raw_transcript) > 2:
                 with st.spinner("🩺 KROK 2/2: Generowanie pełnych akapitów opisu USG..."):
                     try:
@@ -156,7 +194,7 @@ Jądra prawidłowej wielkości i kształtu, miąższ obu jąder bez uchwytnych z
 "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
 NERKI:
-"Nerki prawidłowego kształtu i wielkości [EUTUALNIE DODAJ WYMIARY: lewa ok. ... cm x ... cm, prawa ok. ... cm x ... cm], kora i rdzeń prawidłowej echogeniczności [LUB OPIS ECHOGENICZNOŚCI KORY], nerki o wyraźnej granicy korowo-rdzeniowej [LUB LEKKO ZATARTEJ], stosunek obu warstw zachowany [LUB POGRUBIAŁA KORA]. [DODAJ OPIS PRZEBUDOWY, NP. cechy umiarkowanej przebudowy przewlekłej, w typie zwyrodnieniowo-pozapalnym]. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone [LUB ZACHYŁKI MIEDNICZEK NIEPOSZERZONE], bez uchwytnych złogów w świetle [LUB OPIS MINERALIZACJI W ZACHYŁKACH]. Moczowody bez uchwytnych zmian w budowie."
+"Nerki prawidłowego kształtu i wielkości [EWENTUALNIE DODAJ WYMIARY: lewa ok. ... cm x ... cm, prawa ok. ... cm x ... cm], kora i rdzeń prawidłowej echogeniczności [LUB OPIS ECHOGENICZNOŚCI KORY], nerki o wyraźnej granicy korowo-rdzeniowej [LUB LEKKO ZATARTEJ], stosunek obu warstw zachowany [LUB POGRUBIAŁA KORA]. [DODAJ OPIS PRZEBUDOWY, NP. cechy umiarkowanej przebudowy przewlekłej, w typie zwyrodnieniowo-pozapalnym]. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone [LUB ZACHYŁKI MIEDNICZEK NIEPOSZERZONE], bez uchwytnych złogów w świetle [LUB OPIS MINERALIZACJI W ZACHYŁKACH]. Moczowody bez uchwytnych zmian w budowie."
 
 NADNERCZA:
 "Nadnercza prawidłowej wielkości i kształtu [DODAJ WYMIAR, NP. grubości około 3,7-3,9 mm], bez uchwytnych zmian w budowie [LUB DODAJ ZWŁÓKNIENIA, NP. z drobnymi ogniskami zwłóknień, poza tym bez uchwytnych zmian w budowie]."
@@ -200,6 +238,10 @@ ZASADY WYLOTOWE:
                         
                         corrected_text = response.choices[0].message.content.strip()
                         st.session_state["editable_report_area"] = corrected_text
+                        
+                        # ZAPISUJEMY GENERACJĘ DO HISTORII
+                        add_to_history(corrected_text)
+                        
                         st.success("✅ Generowanie wzorcowego raportu zakończone!")
 
                     except Exception as e:
@@ -381,6 +423,11 @@ else:
         report_sections.append("TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych.")
 
     final_report_text = "\n\n".join(report_sections)
+    
+    # Dodajemy wygenerowany z tabeli opis również do historii przy przełączeniu
+    if st.button("📋 Zapisz ten opis w historii"):
+        add_to_history(final_report_text)
+        st.success("Zapisano badanie do historii!")
 
     st.markdown("---")
     st.subheader("📋 Gotowy Raport USG (do skopiowania):")
