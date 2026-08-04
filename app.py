@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 
 # 1. Konfiguracja strony
 st.set_page_config(
@@ -80,7 +81,7 @@ with st.sidebar:
 # WYBÓR TRYBU PRACY NA SAMEJ GÓRZE
 tryb = st.radio(
     "Wybierz tryb pracy:",
-    ["🎙️ TRYB 1: Dyktowanie swobodne (Puste tło)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
+    ["🎙️ TRYB 1: Dyktowanie swobodne (Bezpośrednio na stronie)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
     horizontal=True,
     key="tryb_pracy"
 )
@@ -88,16 +89,84 @@ tryb = st.radio(
 st.markdown("---")
 
 # ==========================================
-# TRYB 1: DYKTOWANIE SWOBODNE
+# TRYB 1: DYKTOWANIE SWOBODNE BEZPOŚREDNIO NA STRONIE
 # ==========================================
-if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Puste tło)":
+if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Bezpośrednio na stronie)":
     st.subheader("🎙️ Swobodne dyktowanie badania")
+    st.caption("Kliknij czerwony przycisk mikrofonu, zezwól przeglądarce na użycie mikrofonu i dyktuj. Tekst pojawi się w polu poniżej.")
+
+    # Wbudowany bezpośrednio w stronę dyktafon Chrome/Edge
+    speech_html = """
+    <div style="font-family: sans-serif; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;">
+        <button id="micBtn" onclick="toggleDictation()" style="background-color: #dc2626; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px;">
+            🎙️ Włącz / Wyłącz Mikrofon
+        </button>
+        <span id="status" style="margin-left: 12px; font-size: 13px; color: #64748b; font-weight: 500;">Mikrofon wyłączony</span>
+        
+        <script>
+            var recognition;
+            var isRecognizing = false;
+
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                var SpeechRecognition = window.SpeechRecognition || webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'pl-PL';
+
+                recognition.onstart = function() {
+                    isRecognizing = true;
+                    document.getElementById('status').innerText = '🔴 Nagrywanie... Mów do mikrofonu';
+                    document.getElementById('status').style.color = '#dc2626';
+                };
+
+                recognition.onerror = function(event) {
+                    document.getElementById('status').innerText = '⚠️ Błąd mikrofonu: ' + event.error;
+                    document.getElementById('status').style.color = '#b91c1c';
+                };
+
+                recognition.onend = function() {
+                    isRecognizing = false;
+                    document.getElementById('status').innerText = '⚪ Mikrofon wyłączony';
+                    document.getElementById('status').style.color = '#64748b';
+                };
+
+                recognition.onresult = function(event) {
+                    var finalTranscript = '';
+                    for (var i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript + ' ';
+                        }
+                    }
+                    if (finalTranscript.length > 0) {
+                        // Wklejanie do pola tekstowego poniżej w Streamlit
+                        var textarea = parent.document.querySelector('textarea[aria-label="Treść badania:"]');
+                        if (textarea) {
+                            textarea.value += finalTranscript;
+                            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    }
+                };
+            } else {
+                document.getElementById('status').innerText = '⚠️ Twoja przeglądarka nie obsługuje dyktowania (Użyj Chrome lub Edge).';
+            }
+
+            function toggleDictation() {
+                if (isRecognizing) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            }
+        </script>
+    </div>
+    """
     
-    st.info("💡 **Instrukcja dyktowania głosem na komputerze:** Kliknij w poniższe pole tekstowe i naciśnij skrót **Win + H** (Windows) lub kliknij 2x **Fn** (Mac). Mikrofon komputera włączy się i zacznie pisać po polsku!")
+    components.html(speech_html, height=80)
 
     podyktowany_tekst = st.text_area(
-        "Podyktuj lub wpisz treść badania tutaj:",
-        placeholder="np. Pęcherz moczowy miernie wypełniony ściana 2.5 mm, nerka lewa 4.5x2.8 cm...",
+        "Treść badania:",
+        placeholder="Tutaj pojawi się podyktowany tekst...",
         height=220
     )
     
