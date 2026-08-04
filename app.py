@@ -29,6 +29,9 @@ if "plec_pacjenta" not in st.session_state:
 if "last_mode2_hash" not in st.session_state:
     st.session_state["last_mode2_hash"] = ""
 
+if "last_mode3_hash" not in st.session_state:
+    st.session_state["last_mode3_hash"] = ""
+
 # === ODCZYT KLUCZA Z SECRETS ===
 api_key = None
 if "OPENAI_API_KEY" in st.secrets:
@@ -79,7 +82,7 @@ def add_to_history(report_text):
         st.session_state["reports_history"].insert(0, entry)
         st.session_state["reports_history"] = st.session_state["reports_history"][:10]
 
-# GŁÓWNA FUNKCJA DOPASOWUJĄCA UKŁAD ROZRODCZY - W 100% ZGODNA Z TWOIM WZORCEM
+# GŁÓWNA FUNKCJA DOPASOWUJĄCA UKŁAD ROZRODCZY - W 100% ZGODNA Z WZORCEM
 def get_rodne_text(plec_wybor):
     p = str(plec_wybor).lower()
     if "niekastrowany" in p:
@@ -127,7 +130,11 @@ with st.sidebar:
 
 tryb = st.radio(
     "Wybierz tryb pracy:",
-    ["🎙️ TRYB 1: Dyktowanie głosem (Whisper + Ścisły Szablon Medyczny)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
+    [
+        "🎙️ TRYB 1: Dyktowanie (AI)", 
+        "📏 TRYB 2: Tabela wymiarów",
+        "📝 TRYB 3: Wybór zmienionych narządów"
+    ],
     horizontal=True,
     key="tryb_pracy"
 )
@@ -137,7 +144,7 @@ st.markdown("---")
 # ==========================================
 # TRYB 1: DYKTOWANIE Z PEŁNYM ŚCISŁYM SZABLONEM
 # ==========================================
-if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + Ścisły Szablon Medyczny)":
+if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
     st.subheader("🎙️ Swobodne dyktowanie badania z generacją wg Ścisłego Wzorca Medycznego")
     st.caption("Podyktuj obserwacje. AI wstawi je w dokładnie zdefiniowane, pełne akapity szablonowe i automatycznie zapisze w historii.")
 
@@ -246,7 +253,7 @@ ZASADY WYLOTOWE:
                         
                         corrected_text = response.choices[0].message.content.strip()
                         st.session_state["editable_report_area"] = corrected_text
-                        add_to_history(corrected_text)  # Automatyczny zapis w historii dla Trybu 1
+                        add_to_history(corrected_text)
                         st.success("✅ Generowanie wzorcowego raportu zakończone!")
 
                     except Exception as e:
@@ -271,7 +278,7 @@ ZASADY WYLOTOWE:
 # ==========================================
 # TRYB 2: TABELA WYMIARÓW + SZYBKIE PATOLOGIE
 # ==========================================
-else:
+elif tryb == "📏 TRYB 2: Tabela wymiarów":
     st.subheader("📏 Tabela Wymiarów (dla opisów prawidłowych i odchyleń)")
     st.caption("Wybór płci z lewego panelu automatycznie aktualizuje treść raportu bez klikania dodatkowych przycisków.")
     
@@ -419,7 +426,6 @@ else:
 
     mode2_final_report = "\n\n".join(report_sections)
     
-    # Inteligentne nadpisywanie tekst boxu przy zmianie płci/danych w tabeli
     if mode2_final_report != st.session_state.get("last_mode2_hash", ""):
         st.session_state["editable_report_area"] = mode2_final_report
         st.session_state["last_mode2_hash"] = mode2_final_report
@@ -434,6 +440,66 @@ else:
         if st.button("📋 Zapisz ten opis w historii"):
             add_to_history(st.session_state["editable_report_area"])
             st.success("Zapisano badanie do historii!")
+
+    podyktowany_tekst = st.text_area(
+        "Wygenerowany Raport USG (edytowalny tekst ciągły):",
+        key="editable_report_area",
+        height=350
+    )
+
+    st.markdown("---")
+    st.subheader("📋 Gotowy Raport USG (do skopiowania):")
+    st.code(st.session_state["editable_report_area"], language=None)
+
+# ==========================================
+# TRYB 3: INTELIGENTNY SZABLON (ZMIENIONE NARZĄDY)
+# ==========================================
+elif tryb == "📝 TRYB 3: Wybór zmienionych narządów":
+    st.subheader("📝 Inteligentny Szablon (Nadpisywanie Zmian)")
+    st.caption("Zaznacz narząd, w którym występują zmiany. Pojawi się pole wstępnie wypełnione tekstem z NORMĄ – wykasuj lub dopisz w nim to, co dotyczy patologii. Niezaznaczone narządy pozostają całkowicie zdrowe.")
+
+    # Definicja wszystkich norm dla Trybu 3
+    organs_defaults = {
+        "Pęcherz moczowy": "Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana prawidłowej budowy, mocz aechogenny, bez mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle.",
+        "Układ rozrodczy": get_rodne_text(st.session_state["plec_pacjenta"]),
+        "Nerki": "Nerki prawidłowego kształtu i wielkości, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie.",
+        "Nadnercza": "Nadnercza prawidłowej wielkości i kształtu, bez uchwytnych zmian w budowie.",
+        "Śledziona": "Śledziona prawidłowej wielkości, jednorodna echogenicznie, miąższ drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona.",
+        "Żołądek": "Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego.",
+        "Jelita i Dwunastnica": "Ściana dwunastnicy niepogrubiała, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana. Światło nieposzerzone, w świetle niewielka ilość strawionej treści. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, okrężnica wypełniona uformowanymi masami kałowymi.",
+        "Wątroba i Pęcherzyk żółciowy": "Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie.",
+        "Trzustka": "Trzustka prawidłowej wielkości i kształtu, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony.",
+        "Węzły chłonne": "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie.",
+        "Wolny płyn": "Brak wolnego płynu w jamie brzusznej."
+    }
+
+    if dodaj_tarczyce:
+        organs_defaults["Tarczyca"] = "TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych."
+
+    final_mode3_paragraphs = []
+
+    st.markdown("---")
+    
+    # Generowanie interfejsu (Checkboxy i pola tekstowe)
+    for organ_name, default_text in organs_defaults.items():
+        is_changed = st.checkbox(f"⚠️ Zmiany w narządzie: **{organ_name}**", key=f"chk_{organ_name}")
+        if is_changed:
+            custom_text = st.text_area(f"Edytuj poniższą normę dla narządu {organ_name}:", value=default_text, key=f"txt_{organ_name}", height=120)
+            final_mode3_paragraphs.append(custom_text)
+        else:
+            final_mode3_paragraphs.append(default_text)
+
+    mode3_final_report = "\n\n".join(final_mode3_paragraphs)
+
+    # Dynamiczne odświeżanie
+    if mode3_final_report != st.session_state.get("last_mode3_hash", ""):
+        st.session_state["editable_report_area"] = mode3_final_report
+        st.session_state["last_mode3_hash"] = mode3_final_report
+
+    st.markdown("---")
+    if st.button("📋 Zapisz ten opis w historii (Tryb 3)"):
+        add_to_history(st.session_state["editable_report_area"])
+        st.success("Zapisano badanie do historii!")
 
     podyktowany_tekst = st.text_area(
         "Wygenerowany Raport USG (edytowalny tekst ciągły):",
