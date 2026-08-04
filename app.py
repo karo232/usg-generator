@@ -20,6 +20,7 @@ st.set_page_config(
 # === INICJALIZACJA SESSION STATE ===
 if "editable_report_area" not in st.session_state: st.session_state["editable_report_area"] = ""
 if "reports_history" not in st.session_state: st.session_state["reports_history"] = []
+if "gatunek_pacjenta" not in st.session_state: st.session_state["gatunek_pacjenta"] = "Pies"
 if "plec_pacjenta" not in st.session_state: st.session_state["plec_pacjenta"] = "Suka (kastrowana / kikut)"
 if "last_mode2_hash" not in st.session_state: st.session_state["last_mode2_hash"] = ""
 if "last_mode3_hash" not in st.session_state: st.session_state["last_mode3_hash"] = ""
@@ -81,7 +82,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# GŁÓWNY NAGŁÓWEK (Naśladujący logo - wyświetla się zawsze, nawet przy logowaniu)
+# GŁÓWNY NAGŁÓWEK
 st.markdown("""
     <div class="custom-header">
         <span class="usg">USGVet</span> <span class="scans">Scans</span>
@@ -94,22 +95,17 @@ st.markdown("""
 # EKRAN LOGOWANIA (HASŁO)
 # ==========================================
 def check_password():
-    """Zwraca True, jeśli użytkownik wpisał poprawne hasło."""
     def password_entered():
-        # TUTAJ ZMIENIASZ HASŁO. Jeśli chcesz zmienić hasło domyślne na inne, zmień "usg2024" na np. "twojehaslo123".
-        # Najpierw sprawdza, czy hasło jest w bezpiecznych plikach secrets, jeśli nie ma - używa "usg2024".
         prawidlowe_haslo = st.secrets.get("APP_PASSWORD", "usg2024")
-        
         if st.session_state["password"] == prawidlowe_haslo:
             st.session_state["password_correct"] = True
-            del st.session_state["password"] # Kasujemy hasło z pamięci dla bezpieczeństwa
+            del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
 
     if st.session_state.get("password_correct", False):
         return True
 
-    # Interfejs wpisywania hasła
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("""
@@ -124,15 +120,13 @@ def check_password():
             st.error("❌ Niepoprawne hasło. Spróbuj ponownie.")
     return False
 
-# ZATRZYMAJ APLIKACJĘ, JEŚLI HASŁO NIE JEST POPRAWNE
 if not check_password():
     st.stop()
 
 # ==========================================
-# (RESZTA KODU URUCHAMIA SIĘ TYLKO PO POPRAWNYM ZALOGOWANIU)
+# GŁÓWNA LOGIKA APLIKACJI
 # ==========================================
 
-# === ODCZYT KLUCZA Z SECRETS ===
 api_key = None
 if "OPENAI_API_KEY" in st.secrets:
     api_key = str(st.secrets["OPENAI_API_KEY"]).strip().strip('"').strip("'")
@@ -142,7 +136,6 @@ if HAS_OPENAI and api_key:
     try: client = OpenAI(api_key=api_key)
     except Exception: client = None
 
-# Funkcja pomocnicza do zapisywania w historii
 def add_to_history(report_text):
     if report_text and report_text.strip():
         timestamp = datetime.now().strftime("%H:%M:%S")
@@ -151,7 +144,6 @@ def add_to_history(report_text):
         st.session_state["reports_history"].insert(0, entry)
         st.session_state["reports_history"] = st.session_state["reports_history"][:10]
 
-# GŁÓWNA FUNKCJA DOPASOWUJĄCA UKŁAD ROZRODCZY
 def get_rodne_text(plec_wybor):
     p = str(plec_wybor).lower()
     if "niekastrowany" in p: return "Gruczoł krokowy niepowiększony, wielkości ok. ... cm x ... cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia."
@@ -159,23 +151,67 @@ def get_rodne_text(plec_wybor):
     elif "cała" in p: return "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
     else: return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
+# BAZA SZABLONÓW DLA PSA I KOTA (Dokładnie wg wytycznych)
+def get_templates(gatunek):
+    if gatunek == "Kot":
+        return {
+            "pecherz": "Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. {pech} mm, prawidłowej budowy, bez cech zapalenia ostrego, mocz aechogenny, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle.",
+            "nerki": "Nerki prawidłowego kształtu i wielkości {nerki}, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie.",
+            "nadnercza": "Nadnercza prawidłowej wielkości i kształtu, grubości około 4,3 mm, bez uchwytnych zmian w budowie.",
+            "sledziona": "Śledziona prawidłowej wielkości, grubości około {spl} cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona.",
+            "zoladek": "Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości, około 2,2-4,4 mm, w trzonie ok. {zol} mm, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego.",
+            "jelita": "Ściana dwunastnicy niepogrubiała, gr. ok. {dwu} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość płynnej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa. Światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka zachowana. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, gr. do ok. {okr} mm, okrężnica wypełniona uformowanymi masami kałowymi.",
+            "watroba": "Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez uchwytnych zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. do {pech_zol} mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie.",
+            "trzustka": "Trzustka prawidłowej wielkości i kształtu, gr. ok. {trz} mm w płacie lewym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony.",
+            "wezly": "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie.",
+            "plyn": "Brak wolnego płynu w jamie brzusznej."
+        }
+    else: # Pies
+        return {
+            "pecherz": "Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. {pech} mm, prawidłowej budowy, bez cech zapalenia ostrego, mocz aechogenny, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle.",
+            "nerki": "Nerki prawidłowego kształtu i wielkości {nerki}, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie.",
+            "nadnercza": "Nadnercza prawidłowej wielkości i kształtu, grubości około 4,3 mm, bez uchwytnych zmian w budowie.",
+            "sledziona": "Śledziona prawidłowej wielkości, grubości około {spl} cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona.",
+            "zoladek": "Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości, pomiędzy fałdami do około {zol} mm, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego.",
+            "jelita": "Ściana dwunastnicy niepogrubiała, gr. ok. {dwu} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość płynnej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa. Światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka zachowana. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, gr. do ok. {okr} mm, okrężnica wypełniona uformowanymi masami kałowymi.",
+            "watroba": "Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez uchwytnych zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. {pech_zol} mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie.",
+            "trzustka": "Trzustka prawidłowej wielkości i kształtu, gr. ok. {trz} mm w płacie prawym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony.",
+            "wezly": "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie.",
+            "plyn": "Brak wolnego płynu w jamie brzusznej."
+        }
+
 # ==========================================
-# SIDEBAR: USTAWIENIA GÓRNE (KAFELKI)
+# SIDEBAR: USTAWIENIA GÓRNE
 # ==========================================
 with st.sidebar:
     st.markdown("<h3 style='color: #135c7e; font-weight: 700; margin-bottom: 10px;'>⚙️ Konfiguracja Pacjenta</h3>", unsafe_allow_html=True)
     
     with st.container(border=True):
-        st.markdown("<div style='font-weight: 600; color: #135c7e; margin-bottom: 5px; font-size: 15px;'>Wybierz płeć i stan fizjologiczny:</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-weight: 600; color: #135c7e; margin-bottom: 5px; font-size: 15px;'>Gatunek:</div>", unsafe_allow_html=True)
+        gatunek = st.selectbox(
+            "Gatunek", 
+            ["Pies", "Kot"],
+            key="gatunek_pacjenta",
+            label_visibility="collapsed"
+        )
+        
+    # Dynamiczna zmiana nazewnictwa dla Psa / Kota
+    plec_opcje = ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"] if gatunek == "Pies" else ["Kotka (kastrowana / kikut)", "Kotka (cała)", "Kocur (samiec niekastrowany)", "Kocur (samiec kastrowany)"]
+    
+    with st.container(border=True):
+        st.markdown("<div style='font-weight: 600; color: #135c7e; margin-bottom: 5px; font-size: 15px;'>Płeć i stan fizjologiczny:</div>", unsafe_allow_html=True)
         plec = st.selectbox(
             "Płeć", 
-            ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"],
+            plec_opcje,
             key="plec_pacjenta",
             label_visibility="collapsed"
         )
         
     with st.container(border=True):
         dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
+
+# Pobranie aktywnych szablonów narządów
+szablony = get_templates(st.session_state["gatunek_pacjenta"])
 
 # ==========================================
 # WYBÓR TRYBU PRACY 
@@ -233,23 +269,32 @@ if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
                 if raw_transcript and len(raw_transcript) > 2:
                     with st.spinner("🩺 KROK 2/2: Generowanie pełnych akapitów opisu USG..."):
                         try:
-                            szablon_rozrodczy = get_rodne_text(st.session_state["plec_pacjenta"])
+                            sz_rozrodczy = get_rodne_text(st.session_state["plec_pacjenta"])
+                            # Podmiana zmiennych w szablonach na komendę dla AI
+                            ai_pech = szablony['pecherz'].replace('{pech}', '[WYMIAR]')
+                            ai_ner = szablony['nerki'].replace('{nerki}', 'około [DODAJ WYMIARY]')
+                            ai_spl = szablony['sledziona'].replace('{spl}', '[WYMIAR]')
+                            ai_zol = szablony['zoladek'].replace('{zol}', '[WYMIAR]')
+                            ai_jel = szablony['jelita'].replace('{dwu}', '[WYMIAR]').replace('{okr}', '[WYMIAR]')
+                            ai_wat = szablony['watroba'].replace('{pech_zol}', '[WYMIAR]')
+                            ai_trz = szablony['trzustka'].replace('{trz}', '[WYMIAR]')
+                            
                             system_prompt = f"""
 Jesteś profesjonalnym edytorem raportów USG weterynaryjnego. Przekształć notatkę w PEŁNE AKAPITY MEDYCZNE wg wzorców.
-KRYTYCZNA ZASADA PŁCI (Pacjent: {st.session_state["plec_pacjenta"]}):
-Dla układu rozrodczego / prostaty MUSISZ UŻYĆ DOKŁADNIE PONIŻSZEGO WZORCA: "{szablon_rozrodczy}"
+GATUNEK: {st.session_state["gatunek_pacjenta"]}
+KRYTYCZNA ZASADA PŁCI (Pacjent: {st.session_state["plec_pacjenta"]}): "{sz_rozrodczy}"
 
 MATRYCE AKAPITÓW DLA POZOSTAŁYCH NARZĄDÓW:
-PĘCHERZ MOCZOWY: "Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. [WYMIAR] mm, prawidłowej budowy, bez cech zapalenia, mocz aechogenny, bez mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
-NERKI: "Nerki prawidłowego kształtu i wielkości około [DODAJ WYMIARY], kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
-NADNERCZA: "Nadnercza prawidłowej wielkości i kształtu, grubości około [WYMIAR] mm, bez uchwytnych zmian w budowie."
-ŚLEDZIONA: "Śledziona prawidłowej wielkości, grubości około [WYMIAR] cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
-ŻOŁĄDEK: "Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości około ...-... mm, w trzonie ok. [WYMIAR] mm, okolica odźwiernika bez zmian, ściana gr. ok. [WYMIAR] mm, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego."
-JELITA I DWUNASTNICA: "Ściana dwunastnicy niepogrubiała, ok. [WYMIAR] mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana. Światło nieposzerzone, w świetle niewielka ilość strawionej treści. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, ok. [WYMIAR] mm, okrężnica wypełniona uformowanymi masami kałowymi."
-WĄTROBA I PĘCHERZYK ŻÓŁCIOWY: "Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. [WYMIAR] mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
-TRZUSTKA: "Trzustka prawidłowej wielkości i kształtu, gr. ok. [WYMIAR] mm w płacie prawym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony."
-WĘZŁY CHŁONNE: "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie."
-WOLNY PŁYN: "Brak wolnego płynu w jamie brzusznej."
+PĘCHERZ MOCZOWY: "{ai_pech}"
+NERKI: "{ai_ner}"
+NADNERCZA: "{szablony['nadnercza']}"
+ŚLEDZIONA: "{ai_spl}"
+ŻOŁĄDEK: "{ai_zol}"
+JELITA I DWUNASTNICA: "{ai_jel}"
+WĄTROBA I PĘCHERZYK ŻÓŁCIOWY: "{ai_wat}"
+TRZUSTKA: "{ai_trz}"
+WĘZŁY CHŁONNE: "{szablony['wezly']}"
+WOLNY PŁYN: "{szablony['plyn']}"
 {( 'TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych.' if dodaj_tarczyce else '' )}
 ZASADY WYLOTOWE: Oddzielaj narządy nową linią. Zwracaj WYŁĄCZNIE czysty tekst opisu medycznego.
 """
@@ -274,33 +319,40 @@ ZASADY WYLOTOWE: Oddzielaj narządy nową linią. Zwracaj WYŁĄCZNIE czysty tek
 # ==========================================
 elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     st.subheader("Wpisz wymiary i zaznacz odchylenia z bazy")
-    st.caption("Uzupełnienie tabeli automatycznie buduje pełen opis medyczny. Zostawienie pustego pola wstawi '(...)'.")
+    st.caption("Puste pola zostaną zastąpione prawidłowymi, książkowymi wymiarami dla zaznaczonego gatunku.")
     
     with st.container(border=True):
         tm1, tm2, tm3, tm4 = st.columns(4)
         with tm1:
             dim_pecherz = st.text_input("Pęcherz ściana (mm)", placeholder="np. 1.1")
-            dim_nerka_l = st.text_input("Nerka lewa (cm)", placeholder="np. 4.9 x 2.9")
-            dim_nerka_p = st.text_input("Nerka prawa (cm)", placeholder="np. 4.8 x 2.8")
+            dim_nerka_l = st.text_input("Nerka lewa (cm)", placeholder="np. 3.2 x 1.7")
+            dim_nerka_p = st.text_input("Nerka prawa (cm)", placeholder="np. 3.2 x 1.7")
         with tm2:
-            dim_spleen = st.text_input("Śledziona gr. (cm)", placeholder="np. 1.3")
-            dim_zoladek = st.text_input("Żołądek ściana (mm)", placeholder="np. 2.3")
+            dim_spleen = st.text_input("Śledziona gr. (cm)", placeholder="np. 1.4")
+            dim_zoladek = st.text_input("Żołądek ściana (mm)", placeholder="np. 2.1")
         with tm3:
-            dim_dwunastnica = st.text_input("Dwunastnica ściana (mm)", placeholder="np. 2.4")
+            dim_dwunastnica = st.text_input("Dwunastnica ściana (mm)", placeholder="np. 2.8")
             dim_okresnica = st.text_input("Okrężnica ściana (mm)", placeholder="np. 1.3")
         with tm4:
             dim_trzustka = st.text_input("Trzustka gr. (mm)", placeholder="np. 8")
             dim_pecherzyk = st.text_input("Pęch. żółciowy ściana (mm)", placeholder="np. 1.1")
 
-    val_pecherz = dim_pecherz.strip() if dim_pecherz.strip() else "..."
-    val_nerka_l = dim_nerka_l.strip() if dim_nerka_l.strip() else "..."
-    val_nerka_p = dim_nerka_p.strip() if dim_nerka_p.strip() else "..."
-    val_spleen = dim_spleen.strip() if dim_spleen.strip() else "..."
-    val_zoladek = dim_zoladek.strip() if dim_zoladek.strip() else "..."
-    val_dwunastnica = dim_dwunastnica.strip() if dim_dwunastnica.strip() else "..."
-    val_okresnica = dim_okresnica.strip() if dim_okresnica.strip() else "..."
-    val_trzustka = dim_trzustka.strip() if dim_trzustka.strip() else "..."
-    val_pecherzyk = dim_pecherzyk.strip() if dim_pecherzyk.strip() else "..."
+    # Wypełnianie wymiarów (Domyślne jeśli puste)
+    gat = st.session_state["gatunek_pacjenta"]
+    v_pech = dim_pecherz.strip() if dim_pecherz.strip() else "1,1"
+    v_nl = dim_nerka_l.strip()
+    v_np = dim_nerka_p.strip()
+    if v_nl or v_np:
+        v_nerki = f"lewa ok. {v_nl or '...'} cm, prawa ok. {v_np or '...'} cm"
+    else:
+        v_nerki = "około 3,2 cm x 1,7 cm"
+        
+    v_spl = dim_spleen.strip() if dim_spleen.strip() else "1,4"
+    v_zol = dim_zoladek.strip() if dim_zoladek.strip() else ("2,1" if gat == "Kot" else "2,9")
+    v_dwu = dim_dwunastnica.strip() if dim_dwunastnica.strip() else "2,8"
+    v_okr = dim_okresnica.strip() if dim_okresnica.strip() else "1,3"
+    v_trz = dim_trzustka.strip() if dim_trzustka.strip() else ("6,5" if gat == "Kot" else "8")
+    v_pech_zol = dim_pecherzyk.strip() if dim_pecherzyk.strip() else ("1" if gat == "Kot" else "1,1")
 
     st.markdown("### 🧩 Szybkie Odchylenia")
     for key in ['pecherz_pat', 'nerki_pat', 'spleen_pat', 'jelita_pat', 'watroba_pat', 'trzustka_pat', 'plyn_pat']:
@@ -343,22 +395,27 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
             trzustka_pat = st.text_area("Trzustka - edycja", key='trzustka_pat', height=68, label_visibility="collapsed")
             plyn_pat = st.text_area("Płyn - edycja", key='plyn_pat', height=68, label_visibility="collapsed")
 
-    # Funkcje budujące
-    def b_pech(pat, d): return f"Pęcherz moczowy {pat}. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle." if pat else f"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. {d} mm, prawidłowej budowy, bez cech zapalenia, mocz aechogenny, bez mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
-    def b_ner(pat, dl, dp): return f"Nerki prawidłowego kształtu, lewa ok. {dl} cm, prawa ok. {dp} cm, {pat}. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie." if pat else f"Nerki prawidłowego kształtu i wielkości około {dl} cm x {dp} cm, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
-    def b_spl(pat, d): return f"Śledziona {pat}, grubości około {d} cm, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona." if pat else f"Śledziona prawidłowej wielkości, grubości około {d} cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
-    def b_zol(d): return f"Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości około ...-... mm, w trzonie ok. {d} mm, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego."
-    def b_jel(pat, d_dw, d_ok): return f"{pat}. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, ok. {d_ok} mm, okrężnica wypełniona uformowanymi masami kałowymi." if pat else f"Ściana dwunastnicy niepogrubiała, ok. {d_dw} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana. Światło nieposzerzone. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, ok. {d_ok} mm, okrężnica wypełniona uformowanymi masami kałowymi."
-    def b_wat(pat, d): return f"Wątroba {pat}. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie." if pat else f"Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. {d} mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
-    def b_trz(pat, d): return f"Trzustka {pat}. Przewód trzustkowy nieposzerzony." if pat else f"Trzustka prawidłowej wielkości i kształtu, gr. ok. {d} mm w płacie prawym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony."
-    def b_plyn(pat): return f"{pat}" if pat else "Brak wolnego płynu w jamie brzusznej."
+    # Budowanie sekcji z zachowaniem domyślnych wymiarów z szablonu
+    txt_pech = f"Pęcherz moczowy {pecherz_pat}. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle." if pecherz_pat else szablony['pecherz'].format(pech=v_pech)
+    txt_ner = f"Nerki prawidłowego kształtu, {v_nerki}, {nerki_pat}. Torebka narządu gładka, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie." if nerki_pat else szablony['nerki'].format(nerki=v_nerki)
+    txt_spl = f"Śledziona {spleen_pat}, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona." if spleen_pat else szablony['sledziona'].format(spl=v_spl)
+    txt_jel = f"{jelita_pat}. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, gr. do ok. {v_okr} mm, okrężnica wypełniona uformowanymi masami kałowymi." if jelita_pat else szablony['jelita'].format(dwu=v_dwu, okr=v_okr)
+    txt_wat = f"Wątroba {watroba_pat}. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. do {v_pech_zol} mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie." if watroba_pat else szablony['watroba'].format(pech_zol=v_pech_zol)
+    txt_trz = f"Trzustka {trzustka_pat}. Przewód trzustkowy nieposzerzony." if trzustka_pat else szablony['trzustka'].format(trz=v_trz)
+    txt_plyn = f"{plyn_pat}" if plyn_pat else szablony['plyn']
 
     report_sections = [
-        b_pech(pecherz_pat, val_pecherz), get_rodne_text(st.session_state["plec_pacjenta"]), b_ner(nerki_pat, val_nerka_l, val_nerka_p),
-        "Nadnercza prawidłowej wielkości i kształtu, grubości około ... mm, bez uchwytnych zmian w budowie.",
-        b_spl(spleen_pat, val_spleen), b_zol(val_zoladek), b_jel(jelita_pat, val_dwunastnica, val_okresnica),
-        b_wat(watroba_pat, val_pecherzyk), b_trz(trzustka_pat, val_trzustka),
-        "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie.", b_plyn(plyn_pat)
+        txt_pech, 
+        get_rodne_text(st.session_state["plec_pacjenta"]), 
+        txt_ner,
+        szablony['nadnercza'],
+        txt_spl, 
+        szablony['zoladek'].format(zol=v_zol), 
+        txt_jel,
+        txt_wat, 
+        txt_trz,
+        szablony['wezly'], 
+        txt_plyn
     ]
     if dodaj_tarczyce: report_sections.append("TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych.")
     mode2_final_report = "\n\n".join(report_sections)
@@ -385,20 +442,21 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
 # ==========================================
 elif tryb == "📝 TRYB 3: Wybór Zmian":
     st.subheader("Zaznacz i nadpisz narządy z patologią")
-    st.caption("Niezaznaczone narządy zostaną uzupełnione jako zdrowa norma. Wybierz narząd, aby otworzyć pole z tekstem do modyfikacji.")
+    st.caption("Niezaznaczone narządy zostaną uzupełnione jako zdrowa norma (odpowiednia dla gatunku). Wybierz narząd, aby otworzyć pole z tekstem do modyfikacji.")
+    gat = st.session_state["gatunek_pacjenta"]
 
     organs_defaults = {
-        "Pęcherz moczowy": "Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana prawidłowej budowy, mocz aechogenny, bez mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle.",
+        "Pęcherz moczowy": szablony['pecherz'].format(pech="1,1"),
         "Układ rozrodczy": get_rodne_text(st.session_state["plec_pacjenta"]),
-        "Nerki": "Nerki prawidłowego kształtu i wielkości, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie.",
-        "Nadnercza": "Nadnercza prawidłowej wielkości i kształtu, bez uchwytnych zmian w budowie.",
-        "Śledziona": "Śledziona prawidłowej wielkości, jednorodna echogenicznie, miąższ drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona.",
-        "Żołądek": "Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego.",
-        "Jelita i Dwunastnica": "Ściana dwunastnicy niepogrubiała, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana. Światło nieposzerzone, w świetle niewielka ilość strawionej treści. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, okrężnica wypełniona uformowanymi masami kałowymi.",
-        "Wątroba i Pęcherzyk żółciowy": "Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie.",
-        "Trzustka": "Trzustka prawidłowej wielkości i kształtu, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony.",
-        "Węzły chłonne": "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie.",
-        "Wolny płyn": "Brak wolnego płynu w jamie brzusznej."
+        "Nerki": szablony['nerki'].format(nerki="około 3,2 cm x 1,7 cm"),
+        "Nadnercza": szablony['nadnercza'],
+        "Śledziona": szablony['sledziona'].format(spl="1,4"),
+        "Żołądek": szablony['zoladek'].format(zol=("2,1" if gat == "Kot" else "2,9")),
+        "Jelita i Dwunastnica": szablony['jelita'].format(dwu="2,8", okr="1,3"),
+        "Wątroba i Pęcherzyk żółciowy": szablony['watroba'].format(pech_zol=("1" if gat == "Kot" else "1,1")),
+        "Trzustka": szablony['trzustka'].format(trz=("6,5" if gat == "Kot" else "8")),
+        "Węzły chłonne": szablony['wezly'],
+        "Wolny płyn": szablony['plyn']
     }
     if dodaj_tarczyce: organs_defaults["Tarczyca"] = "TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych."
 
@@ -432,7 +490,6 @@ elif tryb == "📝 TRYB 3: Wybór Zmian":
     if st.button("💾 Zapisz ten opis do historii", key="save_btn_tab3"):
         add_to_history(st.session_state.get("editable_report_area_3", mode3_final_report))
         st.success("Zapisano badanie do paska bocznego!")
-
 
 # ==========================================
 # SIDEBAR DOLNY: HISTORIA BADAŃ
