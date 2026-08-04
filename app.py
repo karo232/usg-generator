@@ -84,16 +84,17 @@ st.markdown("---")
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + GPT AI)":
     st.subheader("🎙️ Swobodne dyktowanie badania z korektą medyczną AI")
-    st.caption("Kliknij ikonę mikrofonu, podyktuj obserwacje i zatrzymaj nagrywanie. AI automatycznie dokona transkrypcji oraz poprawności terminologii weterynaryjnej.")
+    st.caption("Kliknij ikonę mikrofonu, podyktuj obserwacje i zatrzymaj nagrywanie.")
 
     audio_recorded = st.audio_input("Nagraj notatkę głosową USG", key="audio_input_widget")
 
     if audio_recorded is not None:
         if client is not None:
             tmp_path = None
+            raw_transcript = ""
+            
             with st.spinner("🧠 KROK 1/2: Rozpoznawanie mowy (Whisper)..."):
                 try:
-                    # Detekcja rozszerzenia pliku
                     file_ext = ".wav"
                     if hasattr(audio_recorded, "name") and audio_recorded.name:
                         ext = os.path.splitext(audio_recorded.name)[1]
@@ -112,54 +113,59 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + GPT AI)":
                             "Słownictwo: wątroba, śledziona, nerki, trzustka, pęcherz moczowy, "
                             "jelita, dwunastnica, żołądek, okrężnica, normoechogenny, hipoechogenny, aechogenny."
                         )
-                        raw_transcript = client.audio.transcriptions.create(
+                        res = client.audio.transcriptions.create(
                             model="whisper-1",
                             file=audio_file,
                             language="pl",
                             prompt=prompt_vet
-                        ).text
+                        )
+                        raw_transcript = res.text.strip() if res.text else ""
 
                 except Exception as e:
                     st.error(f"❌ Błąd transkrypcji Whisper: {e}")
-                    raw_transcript = None
                 finally:
                     if tmp_path and os.path.exists(tmp_path):
                         os.remove(tmp_path)
 
-            # KROK 2: Dwuetapowa Korekta Medyczna przez GPT-4o-mini
-            if raw_transcript:
+            # --- PODGLĄD DIAGNOSTYCZNY ---
+            with st.expander("🔍 Podgląd diagnostyczny (DEBUG)", expanded=True):
+                st.write(f"**Odebrany tekst z Whisper:** `{repr(raw_transcript)}`")
+                st.write(f"**Długość znaków:** `{len(raw_transcript)}`")
+
+            # KROK 2: Wywoływany TYLKO jeśli Whisper wykrył realny tekst
+            if raw_transcript and len(raw_transcript) > 2:
                 with st.spinner("🩺 KROK 2/2: Korekta terminologii weterynaryjnej (GPT-4o-mini)..."):
                     try:
                         system_prompt = (
-                            "Jesteś ekspertką i asystentką weterynaryjną specjalizującą się w diagnostyce USG. "
-                            "Twoim zadaniem jest przekształcenie surowej transkrypcji mowy lekarza na poprawny, "
-                            "profesjonalny opis medyczny po polsku. "
-                            "Zasady:\n"
-                            "1. Popraw fonetyczne pomyłki i przejęzyczenia na właściwą terminologię weterynaryjną "
-                            "(np. 'a echogenny' -> 'aechogenny', 'normo echogenny' -> 'normoechogenny', 'pęcherz miernie' -> 'pęcherz moczowy miernie wypełniony').\n"
-                            "2. Nie zmieniaj znaczenia medycznego ani intencji badania podanej przez lekarza.\n"
-                            "3. Zachowaj zwięzły, fachowy styl opisowy."
+                            "Jesteś profesjonalnym edytorem medycznym i asystentem lekarza weterynarii. "
+                            "Otrzymasz surowy tekst dyktowany przez lekarza podczas badania USG.\n\n"
+                            "ZASADY:\n"
+                            "1. Przekształć surowy tekst w poprawny, czysty opis medyczny USG po polsku.\n"
+                            "2. Popraw błędy ortograficzne i fonetyczne (np. 'a echogenny' -> 'aechogenny', 'pęcherz miernie' -> 'Pęcherz moczowy miernie wypełniony').\n"
+                            "3. Nigdy nie odpowiadaj jak czatbot (NIE pisz 'Przykro mi', 'Oto opis', 'Nie mogę pomóc').\n"
+                            "4. Zwracaj WYŁĄCZNIE sam gotowy tekst medyczny opisu badania."
                         )
 
                         response = client.chat.completions.create(
                             model="gpt-4o-mini",
                             messages=[
                                 {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": f"Surowa transkrypcja z mikrofonu:\n{raw_transcript}"}
+                                {"role": "user", "content": f"Tekst dyktowany przez lekarza do korekty:\n{raw_transcript}"}
                             ],
-                            temperature=0.2
+                            temperature=0.1
                         )
                         
                         corrected_text = response.choices[0].message.content.strip()
                         st.session_state["editable_report_area"] = corrected_text
-                        st.success("✅ Opis został pomyślnie przetworzony i skorygowany!")
+                        st.success("✅ Opis został przetworzony i skorygowany!")
 
                     except Exception as e:
-                        # W razie błędu LLM, podajemy czystą transkrypcję
                         st.session_state["editable_report_area"] = raw_transcript
-                        st.warning(f"⚠️ Nie udało się wykonać II etapu korekty (użyto surowej transkrypcji): {e}")
+                        st.warning(f"⚠️ Użyto surowej transkrypcji (błąd GPT): {e}")
+            else:
+                st.warning("⚠️ Transkrypcja jest pusta lub niewyraźna. Nagraj dłuższą wypowiedź.")
         else:
-            st.error("⚠️ Brak aktywnego klienta OpenAI. Sprawdź klucz w Secrets.")
+            st.error("⚠️ Brak aktywnego klienta OpenAI API. Sprawdź secrets.")
 
     podyktowany_tekst = st.text_area(
         "Wygenerowany i skorygowany opis (możesz tutaj dokonać własnych zmian):",
