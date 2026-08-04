@@ -91,6 +91,7 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
     if audio_recorded is not None:
         if client is not None:
             st.info("🚀 Wywołuję Whisper...")
+            tmp_path = None
             try:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
                     tmp_file.write(audio_recorded.getvalue())
@@ -106,14 +107,18 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
                 
                 # Zgodnie z zaleceniem: wpisujemy wynik bezpośrednio do key widgetu
                 st.session_state["editable_report_area"] = transcript.text
-                os.remove(tmp_path)
                 
-                # Diagnostyka wyników
+                # Diagnostyka szczegółowa obiektu odpowiedzi
                 st.success("✅ Whisper odpowiedział")
-                st.code(repr(transcript.text))
+                st.write("Typ odpowiedzi:", type(transcript))
+                st.write("Treść:", repr(transcript.text))
+                st.write("Długość:", len(transcript.text))
 
             except Exception as e:
                 st.error(f"❌ Błąd OpenAI API: {e}")
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    os.remove(tmp_path)
         else:
             st.error("⚠️ Brak aktywnego klienta OpenAI. Sprawdź klucz w Secrets.")
 
