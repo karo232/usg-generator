@@ -172,23 +172,24 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + Ścisły Szablon Medyc
 Jesteś profesjonalnym edytorem raportów USG weterynaryjnego.
 Twoim zadaniem jest przekształcenie podyktowanej notatki lekarza w PEŁNE, BOGATE AKAPITY MEDYCZNE wg podanych niżej wzorców.
 
-ZASADA GŁÓWNA:
-Nie wklejaj skrótowych zdań z dyktowania. Użyj PEŁNEJ MATRYCY WZORCOWEJ dla każdego wymienionego narządu, wplatając w nią wymiary i patologie podane przez lekarza. Popraw błędy fonetyczne.
+BEZWZGLĘDNA ZASADA PŁCI:
+Pacjent to: {plec}. 
+Musisz użyć opisu układu rozrodczego ściśle dopasowanego do opcji: {plec}.
 
 MATRYCE AKAPITÓW DLA NARZĄDÓW:
 
 PĘCHERZ MOCZOWY:
 "Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. [WYMIAR] mm, prawidłowej budowy, bez cech zapalenia ostrego [LUB OPIS ZAPALENIA], mocz [STAN MOCZU, np. aechogenny / lekko zagęszczony], bez uchwytnych mineralizacji formujących kamienie/osad [LUB OPIS MINERALIZACJI], lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
 
-UKŁAD ROZRODCZY / PROSTATA (płeć: {plec}):
-- Jeśli Pies niekastrowany:
+UKŁAD ROZRODCZY / PROSTATA (płeć wyboru: {plec}):
+- Jeśli "Pies (samiec niekastrowany)":
 "Gruczoł krokowy niepowiększony, normoechogenny, jednorodny echogenicznie, bez zmian guzowatych, bez cech zapalenia [LUB OPIS PATOLOGII].
 Jądra prawidłowej wielkości i kształtu, miąższ obu jąder bez uchwytnych zmian w budowie [LUB OPIS PATOLOGII]."
-- Jeśli Pies kastrowany:
+- Jeśli "Pies (samiec kastrowany)":
 "Gruczoł krokowy obkurczony, hipoechogenny, bez zmian w budowie, typowy obraz pokastracyjny."
-- Jeśli Suka cała:
+- Jeśli "Suka (cała)":
 "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
-- Jeśli Suka kastrowana:
+- Jeśli "Suka (kastrowana / kikut)":
 "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
 NERKI:
@@ -265,7 +266,7 @@ ZASADY WYLOTOWE:
 # ==========================================
 else:
     st.subheader("📏 Tabela Wymiarów (dla opisów prawidłowych i odchyleń)")
-    st.caption("Wpisz cyfry wymiarów lub wybierz patologię z przycisków. Tekst wygeneruje się w pełnym standardzie medycznym.")
+    st.caption("Wpisz cyfry wymiarów lub wybierz patologię z przycisków. Wybór płci z panelu bocznego automatycznie ustala tekst rozrodu.")
     
     tm1, tm2, tm3, tm4 = st.columns(4)
     with tm1:
@@ -351,7 +352,7 @@ else:
         trzustka_pat = st.text_area("Trzustka odchylenia", key='trzustka_pat', height=70, label_visibility="collapsed")
         plyn_pat = st.text_area("Płyn odchylenia", key='plyn_pat', height=70, label_visibility="collapsed")
 
-    # LOGIKA GENEROWANIA PEŁNYCH AKAPITÓW DLA TRYBU 2
+    # PRECYZYJNA LOGIKA GENEROWANIA AKAPITÓW W TRYBIE 2 (ŚCIŚLE UZWGLĘDNIAJĄCA PŁEĆ Pacjenta)
     def build_pecherz(pat, d_pech):
         dim_txt = f" gr. ok. {d_pech} mm" if d_pech else ""
         if pat:
@@ -364,8 +365,8 @@ else:
         elif plec_wybor == "Pies (samiec kastrowany)":
             return "Gruczoł krokowy obkurczony, hipoechogenny, bez zmian w budowie, typowy obraz pokastracyjny."
         elif plec_wybor == "Suka (cała)":
-            return "Macica niepowiększona. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
-        else:
+            return "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
+        else: # Suka kastrowana
             return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
     def build_nerki(pat, dl, dp):
@@ -415,6 +416,7 @@ else:
             return f"{pat}"
         return "Brak wolnego płynu w jamie brzusznej."
 
+    # SKŁADANIE GENERATORA DLA TRYBU 2 DOKŁADNIE DLA WYBRANEJ PŁCI z SIDEBARA:
     report_sections = [
         build_pecherz(pecherz_pat, val_pecherz),
         build_rodne_prostata(plec),
@@ -433,7 +435,6 @@ else:
 
     mode2_final_report = "\n\n".join(report_sections)
     
-    # Przycisk do wygenerowania/zapisania raportu w Trybie 2
     st.markdown("---")
     c_btn1, c_btn2 = st.columns([1, 4])
     with c_btn1:
@@ -445,10 +446,9 @@ else:
             add_to_history(mode2_final_report)
             st.success("Zapisano badanie do historii!")
 
-    # Wyświetlenie pola tekstu
     podyktowany_tekst = st.text_area(
         "Wygenerowany Raport USG (edytowalny tekst ciągły):",
-        value=st.session_state["editable_report_area"] if st.session_state["editable_report_area"] else mode2_final_report,
+        value=mode2_final_report,
         key="editable_report_area_mode2",
         height=350
     )
