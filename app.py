@@ -25,6 +25,113 @@ if "last_mode2_hash" not in st.session_state: st.session_state["last_mode2_hash"
 if "last_mode3_hash" not in st.session_state: st.session_state["last_mode3_hash"] = ""
 if "processed_audio_size" not in st.session_state: st.session_state["processed_audio_size"] = 0
 
+# ==========================================
+# 2. ZAAWANSOWANA STYLIZACJA CSS
+# ==========================================
+st.markdown("""
+    <style>
+    :root {
+        --color-pink: #f49ac1;
+        --color-dark-teal: #135c7e;
+        --color-btn-teal: #237a9f;
+        --color-bg: #f9fbfb;
+    }
+    .stApp { background-color: var(--color-bg); }
+    .custom-header {
+        background-color: white; padding: 1.5rem; border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03); text-align: center;
+        margin-bottom: 2rem; border-bottom: 3px solid var(--color-pink);
+    }
+    .custom-header .usg { color: var(--color-pink); font-weight: 900; font-size: 2.8rem; font-family: 'Arial', sans-serif;}
+    .custom-header .scans { color: var(--color-dark-teal); font-weight: 900; font-size: 2.8rem; font-family: 'Arial', sans-serif;}
+    .custom-header p { color: #666; font-size: 1.1rem; margin-top: 5px; font-weight: 500;}
+
+    div.stButton > button {
+        background-color: var(--color-btn-teal); color: white; border-radius: 25px !important;
+        border: none; padding: 0.5rem 1.5rem; font-weight: 600; transition: all 0.3s ease;
+    }
+    div.stButton > button:hover { background-color: var(--color-dark-teal); box-shadow: 0 4px 10px rgba(19, 92, 126, 0.3); color: white;}
+    section[data-testid="stSidebar"] div.stButton > button { background-color: white; color: var(--color-pink); border: 1px solid var(--color-pink); }
+    section[data-testid="stSidebar"] div.stButton > button:hover { background-color: var(--color-pink); color: white; }
+
+    .stCheckbox > label {
+        background-color: white !important; padding: 12px 18px !important; border-radius: 10px !important;
+        border: 1px solid #eef1f2 !important; box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
+        transition: all 0.2s ease-in-out !important; width: 100%;
+    }
+    .stCheckbox > label:hover { border-color: var(--color-btn-teal) !important; box-shadow: 0 4px 8px rgba(35, 122, 159, 0.1) !important;}
+
+    div[role="radiogroup"] {
+        display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 15px !important; width: 100% !important;
+    }
+    div[role="radiogroup"] > label {
+        background-color: white !important; border: 2px solid #e0e6e8 !important; border-radius: 12px !important;
+        padding: 15px 10px !important; cursor: pointer !important; transition: all 0.3s ease !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important; flex: 1 1 33% !important; min-height: 90px !important;
+        text-align: center !important; display: flex !important; justify-content: center !important; align-items: center !important; margin: 0 !important;
+    }
+    div[role="radiogroup"] > label > div:first-child { display: none !important; }
+    div[role="radiogroup"] > label p { font-size: 1.15rem !important; font-weight: 700 !important; color: var(--color-dark-teal) !important; margin: 0 !important; line-height: 1.3 !important;}
+    div[role="radiogroup"] > label[data-checked="true"] {
+        border-color: var(--color-pink) !important; background-color: #fffafb !important;
+        box-shadow: 0 8px 16px rgba(244, 154, 193, 0.15) !important; transform: translateY(-3px);
+    }
+    .stTextArea textarea, .stTextInput input, .stSelectbox > div > div { border-radius: 10px !important; border: 1px solid #dce4e6 !important;}
+    .stTextArea textarea:focus, .stTextInput input:focus, .stSelectbox > div > div:focus { border-color: var(--color-btn-teal) !important; box-shadow: 0 0 0 1px var(--color-btn-teal) !important;}
+    </style>
+""", unsafe_allow_html=True)
+
+# GŁÓWNY NAGŁÓWEK (Naśladujący logo - wyświetla się zawsze, nawet przy logowaniu)
+st.markdown("""
+    <div class="custom-header">
+        <span class="usg">USGVet</span> <span class="scans">Scans</span>
+        <p>System Generowania Raportów Ultrasonograficznych</p>
+    </div>
+""", unsafe_allow_html=True)
+
+
+# ==========================================
+# EKRAN LOGOWANIA (HASŁO)
+# ==========================================
+def check_password():
+    """Zwraca True, jeśli użytkownik wpisał poprawne hasło."""
+    def password_entered():
+        # TUTAJ ZMIENIASZ HASŁO. Jeśli chcesz zmienić hasło domyślne na inne, zmień "usg2024" na np. "twojehaslo123".
+        # Najpierw sprawdza, czy hasło jest w bezpiecznych plikach secrets, jeśli nie ma - używa "usg2024".
+        prawidlowe_haslo = st.secrets.get("APP_PASSWORD", "usg2024")
+        
+        if st.session_state["password"] == prawidlowe_haslo:
+            st.session_state["password_correct"] = True
+            del st.session_state["password"] # Kasujemy hasło z pamięci dla bezpieczeństwa
+        else:
+            st.session_state["password_correct"] = False
+
+    if st.session_state.get("password_correct", False):
+        return True
+
+    # Interfejs wpisywania hasła
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+        <div style='background-color: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; border-top: 4px solid #135c7e; margin-bottom: 2rem;'>
+            <h3 style='color: #135c7e; margin-bottom: 10px;'>🔒 Dostęp Zabezpieczony</h3>
+            <p style='color: #666; font-size: 0.95rem; margin-bottom: 0;'>Wprowadź hasło, aby skorzystać z generatora USG.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.text_input("Hasło dostępu", type="password", on_change=password_entered, key="password", placeholder="Wpisz hasło...")
+        if "password_correct" in st.session_state and not st.session_state["password_correct"]:
+            st.error("❌ Niepoprawne hasło. Spróbuj ponownie.")
+    return False
+
+# ZATRZYMAJ APLIKACJĘ, JEŚLI HASŁO NIE JEST POPRAWNE
+if not check_password():
+    st.stop()
+
+# ==========================================
+# (RESZTA KODU URUCHAMIA SIĘ TYLKO PO POPRAWNYM ZALOGOWANIU)
+# ==========================================
+
 # === ODCZYT KLUCZA Z SECRETS ===
 api_key = None
 if "OPENAI_API_KEY" in st.secrets:
@@ -34,144 +141,6 @@ client = None
 if HAS_OPENAI and api_key:
     try: client = OpenAI(api_key=api_key)
     except Exception: client = None
-
-# ==========================================
-# 2. ZAAWANSOWANA STYLIZACJA CSS
-# ==========================================
-st.markdown("""
-    <style>
-    /* Definiowanie kolorów marki */
-    :root {
-        --color-pink: #f49ac1;
-        --color-dark-teal: #135c7e;
-        --color-btn-teal: #237a9f;
-        --color-bg: #f9fbfb;
-    }
-
-    /* Zmiana tła aplikacji na delikatniutki szaro-niebieski ze strony */
-    .stApp {
-        background-color: var(--color-bg);
-    }
-
-    /* NAGŁÓWEK STYLIZOWANY NA LOGO ZDJĘCIA */
-    .custom-header {
-        background-color: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-        text-align: center;
-        margin-bottom: 2rem;
-        border-bottom: 3px solid var(--color-pink);
-    }
-    .custom-header .usg { color: var(--color-pink); font-weight: 900; font-size: 2.8rem; font-family: 'Arial', sans-serif;}
-    .custom-header .scans { color: var(--color-dark-teal); font-weight: 900; font-size: 2.8rem; font-family: 'Arial', sans-serif;}
-    .custom-header p { color: #666; font-size: 1.1rem; margin-top: 5px; font-weight: 500;}
-
-    /* PRZYCISKI - Stylizacja zaokrąglona jak "Zaloguj" */
-    div.stButton > button {
-        background-color: var(--color-btn-teal);
-        color: white;
-        border-radius: 25px !important;
-        border: none;
-        padding: 0.5rem 1.5rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    div.stButton > button:hover {
-        background-color: var(--color-dark-teal);
-        box-shadow: 0 4px 10px rgba(19, 92, 126, 0.3);
-        color: white;
-    }
-    
-    /* Zmiana przycisków w Sidebar na różowe dla odróżnienia akcji */
-    section[data-testid="stSidebar"] div.stButton > button {
-        background-color: white;
-        color: var(--color-pink);
-        border: 1px solid var(--color-pink);
-    }
-    section[data-testid="stSidebar"] div.stButton > button:hover {
-        background-color: var(--color-pink);
-        color: white;
-    }
-
-    /* CHECKBOXY - Karty z białym tłem */
-    .stCheckbox > label {
-        background-color: white !important;
-        padding: 12px 18px !important;
-        border-radius: 10px !important;
-        border: 1px solid #eef1f2 !important;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;
-        transition: all 0.2s ease-in-out !important;
-        width: 100%;
-    }
-    .stCheckbox > label:hover {
-        border-color: var(--color-btn-teal) !important;
-        box-shadow: 0 4px 8px rgba(35, 122, 159, 0.1) !important;
-    }
-
-    /* KARTY TRYBÓW PRACY - SZTYWNO WYRÓWNANE DO TEJ SAMEJ WIELKOŚCI */
-    div[role="radiogroup"] {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important; /* Blokuje łamanie wierszy (sztywno jedna linia) */
-        gap: 15px !important;
-        width: 100% !important;
-    }
-    div[role="radiogroup"] > label {
-        background-color: white !important;
-        border: 2px solid #e0e6e8 !important;
-        border-radius: 12px !important;
-        padding: 15px 10px !important;
-        cursor: pointer !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important;
-        flex: 1 1 33% !important; /* Wymusza dokładny, równy podział (3 karty = każda po ~33%) */
-        min-height: 90px !important; /* Wymusza jednakową, stałą wysokość */
-        text-align: center !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        margin: 0 !important;
-    }
-    /* Ukrycie kropki z Radio */
-    div[role="radiogroup"] > label > div:first-child {
-        display: none !important; 
-    }
-    /* Tekst na karcie trybu */
-    div[role="radiogroup"] > label p {
-        font-size: 1.15rem !important;
-        font-weight: 700 !important;
-        color: var(--color-dark-teal) !important;
-        margin: 0 !important;
-        line-height: 1.3 !important;
-    }
-    /* Aktywna Karta (Wybrany Tryb) */
-    div[role="radiogroup"] > label[data-checked="true"] {
-        border-color: var(--color-pink) !important;
-        background-color: #fffafb !important;
-        box-shadow: 0 8px 16px rgba(244, 154, 193, 0.15) !important;
-        transform: translateY(-3px);
-    }
-    
-    /* Pola tekstowe i Selectbox */
-    .stTextArea textarea, .stTextInput input, .stSelectbox > div > div {
-        border-radius: 10px !important;
-        border: 1px solid #dce4e6 !important;
-    }
-    .stTextArea textarea:focus, .stTextInput input:focus, .stSelectbox > div > div:focus {
-        border-color: var(--color-btn-teal) !important;
-        box-shadow: 0 0 0 1px var(--color-btn-teal) !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# GŁÓWNY NAGŁÓWEK (Naśladujący logo)
-st.markdown("""
-    <div class="custom-header">
-        <span class="usg">USGVet</span> <span class="scans">Scans</span>
-        <p>System Generowania Raportów Ultrasonograficznych</p>
-    </div>
-""", unsafe_allow_html=True)
 
 # Funkcja pomocnicza do zapisywania w historii
 def add_to_history(report_text):
@@ -191,22 +160,20 @@ def get_rodne_text(plec_wybor):
     else: return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
 # ==========================================
-# SIDEBAR: USTAWIENIA GÓRNE (KAFELKI!)
+# SIDEBAR: USTAWIENIA GÓRNE (KAFELKI)
 # ==========================================
 with st.sidebar:
     st.markdown("<h3 style='color: #135c7e; font-weight: 700; margin-bottom: 10px;'>⚙️ Konfiguracja Pacjenta</h3>", unsafe_allow_html=True)
     
-    # KAFELEK 1: Wybór płci
     with st.container(border=True):
         st.markdown("<div style='font-weight: 600; color: #135c7e; margin-bottom: 5px; font-size: 15px;'>Wybierz płeć i stan fizjologiczny:</div>", unsafe_allow_html=True)
         plec = st.selectbox(
-            "Płeć", # Ukryty label
+            "Płeć", 
             ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"],
             key="plec_pacjenta",
             label_visibility="collapsed"
         )
         
-    # KAFELEK 2: Opcje dodatkowe
     with st.container(border=True):
         dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
