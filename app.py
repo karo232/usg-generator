@@ -80,11 +80,11 @@ tryb = st.radio(
 st.markdown("---")
 
 # ==========================================
-# TRYB 1: DYKTOWANIE Z OFICJALNYM SZYBKIM SZABLONEM AI
+# TRYB 1: DYKTOWANIE Z SELEKTYWNYM GENEROWANIEM TEKSTU
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + Oficjalny Szablon)":
     st.subheader("🎙️ Swobodne dyktowanie badania z generacją wg Oficjalnego Wzorca")
-    st.caption("Podyktuj swoje obserwacje. AI automatycznie zamieni je na kompletny opis USG w dokładnie takim formacie, jaki stosujesz.")
+    st.caption("Podyktuj obserwacje. AI wygeneruje jednolity tekst zawierający WYŁĄCZNIE podyktowane narządy wg Twojego wzorca.")
 
     audio_recorded = st.audio_input("Nagraj notatkę głosową USG", key="audio_input_widget")
 
@@ -127,76 +127,81 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + Oficjalny Szablon)":
                     if tmp_path and os.path.exists(tmp_path):
                         os.remove(tmp_path)
 
-            # KROK 2: Generowanie raportu wg dokładnego Twojego wzorca
+            # KROK 2: Generowanie jednolitego tekstu TYLKO dla wymienionych narządów
             if raw_transcript and len(raw_transcript) > 2:
-                with st.spinner("🩺 KROK 2/2: Formowanie oficjalnego opisu USG wg wzorca..."):
+                with st.spinner("🩺 KROK 2/2: Formowanie jednolitego opisu USG wg wzorca..."):
                     try:
                         system_prompt = f"""
-Jesteś systemem generowania raportów USG weterynaryjnego. Twoim zadaniem jest przekształcenie luźnej notatki lekarza w PEŁNY, PROFESJONALNY OPIS MEDYCZNY zachowujący dokładnie strukturę, frazy i format podany w poniższym wzorcu.
+Jesteś precyzyjnym edytorem raportów USG weterynaryjnego.
+Twoim zadaniem jest przekształcenie podyktowanej notatki w JEDNOLITY TEKST (CZYSTY TEKST CIĄGŁY BEZ JAKICHKOLWIEK NUMERACJI, PUNKTÓW CZY NAGŁÓWKÓW).
 
-DANE PACJENTA:
+BARDZO WAŻNE ZASADY KONTROLI NARZĄDÓW:
+1. GENERUJ TEKST WYŁĄCZNIE DLA NARZĄDÓW, O KTÓRYCH LEKARZ WSPOMNIAŁ W NAGRANIU.
+2. JEŚLI LEKARZ NIE WSPOMNIAŁ O DANYM NARZĄDZIE, CAŁKOWICIE POMIŃ TEN NARZĄD! NIE DODAWAJ Domyślnych opisów dla niewymienionych narządów.
+
+DANE PACJENTA DLA DOPASOWANIA KONTEKSTU:
 - Płeć / stan: {plec}
-- Badanie tarczycy: {"TAK" if dodaj_tarczyce else "NIE"}
+- Tarczyca: {"TAK" if dodaj_tarczyce else "NIE"}
 
-OFICJALNY WZORIEC RAPORTU (Użyj tych dokładnych zdań dla narządów prawidłowych, a jeśli lekarz poda odchylenia/wymiary – dostosuj je merytorycznie wewnątrz struktury zdań):
+Baza wzorcowych zdań dla wymienionych narządów (użyj tych pełnych zdań dla narządu, jeśli lekarz uznał go za prawidłowy, lub wbuduj w te zdania podane odchylenia/wymiary):
 
-1. Pęcherz moczowy:
+PĘCHERZ MOCZOWY:
 "Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. ... mm, prawidłowej budowy, bez cech zapalenia, mocz aechogenny, bez mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
 
-2. Układ rozrodczy / Prostata (dobierz odpowiednio do płci pacjenta [{plec}]):
-- Jeśli pies niekastrowany: "Gruczoł krokowy niepowiększony, wielkości ok. ... cm x ... cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia. Jądra w mosznie, prawidłowej wielkości i echogeniczności, miąższ jednorodny, bez zmian ogniskowych."
-- Jeśli pies kastrowany: "Gruczoł krokowy niepowiększony, fizjologicznie zmniejszony (stan po kastracji), miąższ jednorodny, bez cech zapalenia. Stan po orchidektomii – brak jąder w mosznie."
-- Jeśli suka cała: "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
-- Jeśli suka kastrowana / kikut: "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
+UKŁAD ROZRODCZY / PROSTATA (stosuj odpowiednio do płci pacjenta: {plec}):
+- Pies niekastrowany: "Gruczoł krokowy niepowiększony, wielkości ok. ... cm x ... cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia. Jądra w mosznie, prawidłowej wielkości i echogeniczności, miąższ jednorodny, bez zmian ogniskowych."
+- Pies kastrowany: "Gruczoł krokowy niepowiększony, fizjologicznie zmniejszony (stan po kastracji), miąższ jednorodny, bez cech zapalenia. Stan po orchidektomii – brak jąder w mosznie."
+- Suka cała: "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
+- Suka kastrowana / kikut: "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
-3. Nerki:
+NERKI:
 "Nerki prawidłowego kształtu i wielkości około ... cm x ... cm, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
 
-4. Nadnercza:
+NADNERCZA:
 "Nadnercza prawidłowej wielkości i kształtu, grubości około ... mm, bez uchwytnych zmian w budowie."
 
-5. Śledziona:
+ŚLEDZIONA:
 "Śledziona prawidłowej wielkości, grubości około ... cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
 
-6. Żołądek:
+ŻOŁĄDEK:
 "Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości około ...-... mm, w trzonie ok. ... mm, okolica odźwiernika bez zmian, ściana gr. ok. ... mm, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego."
 
-7. Jelita i Dwunastnica:
+JELITA I DWUNASTNICA:
 "Ściana dwunastnicy niepogrubiała, ok. ... mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana. Światło nieposzerzone, w świetle niewielka ilość strawionej treści. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, ok. ... mm, okrężnica wypełniona uformowanymi masami kałowymi."
 
-8. Wątroba i Pęcherzyk żółciowy:
+WĄTROBA I PĘCHERZYK ŻÓŁCIOWY:
 "Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. ... mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
 
-9. Trzustka:
+TRZUSTKA:
 "Trzustka prawidłowej wielkości i kształtu, gr. ok. ... mm w płacie prawym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony."
 
-10. Węzły chłonne:
+WĘZŁY CHŁONNE:
 "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie."
 
-11. Wolny płyn:
+WOLNY PŁYN:
 "Brak wolnego płynu w jamie brzusznej."
 
-{( '12. Tarczyca:\n"TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych."' if dodaj_tarczyce else '' )}
+TARCZYCA:
+"TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych."
 
-ZASADY:
-1. Rozwiń skróty myślowe lekarza do pełnych zdań z powyższego wzorca (jeśli narząd jest prawidłowy, wypisz pełen wzorcowy akapit).
-2. Jeśli lekarz podał konkretne wymiary lub patologie, uzupełnij je w odpowiednich miejscach zdań.
-3. Poszczególne narządy oddzielaj podwójną spacją / nową linią.
-4. Zwróć WYŁĄCZNIE gotowy tekst raportu, bez żadnych wstępów i komentarzy czatbota.
+ZASADY FORMATOWANIA TEKSTU WYJŚCIOWEGO:
+- Wygeneruj czysty, jednolity tekst ciągły.
+- ABSOLUTNY ZAKAZ dodawania numerków (np. 1., 2.), myślników ani nagłówków.
+- Zwróć SAM tekst raportu bez żadnego słowa wstępu.
 """
 
                         response = client.chat.completions.create(
                             model="gpt-4o-mini",
                             messages=[
                                 {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": f"Notatka lekarza:\n{raw_transcript}"}
+                                {"role": "user", "content": f"Podyktowane słowa lekarza:\n{raw_transcript}"}
                             ],
                             temperature=0.1
                         )
                         
                         corrected_text = response.choices[0].message.content.strip()
                         st.session_state["editable_report_area"] = corrected_text
-                        st.success("✅ Wygenerowano pełny raport wg Twojego wzorca!")
+                        st.success("✅ Wygenerowano jednolity opis dla podyktowanych narządów!")
 
                     except Exception as e:
                         st.session_state["editable_report_area"] = raw_transcript
@@ -207,10 +212,10 @@ ZASADY:
             st.error("⚠️ Brak aktywnego klienta OpenAI API.")
 
     podyktowany_tekst = st.text_area(
-        "Wygenerowany Raport USG (możesz edytować tekst poniżej):",
+        "Wygenerowany Raport USG (edytowalny tekst ciągły):",
         key="editable_report_area",
         placeholder="Tutaj pojawi się gotowy opis medyczny...",
-        height=350
+        height=300
     )
 
     final_report_text = podyktowany_tekst if podyktowany_tekst else "Czekam na nagranie głosu..."
