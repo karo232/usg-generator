@@ -1,7 +1,13 @@
 import streamlit as st
 import tempfile
 import os
-from openai import OpenAI
+
+# Bezpieczny import biblioteki OpenAI (zapobiega wywalaniu aplikacji)
+try:
+    from openai import OpenAI
+    HAS_OPENAI = True
+except ImportError:
+    HAS_OPENAI = False
 
 # 1. Konfiguracja strony
 st.set_page_config(
@@ -12,7 +18,7 @@ st.set_page_config(
 
 # Inicjalizacja klienta OpenAI z Secrets
 client = None
-if "OPENAI_API_KEY" in st.secrets:
+if HAS_OPENAI and "OPENAI_API_KEY" in st.secrets:
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # 2. Stylizacja CSS nawiązująca do marki usgvetscans.pl
@@ -100,7 +106,7 @@ st.markdown("---")
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
     st.subheader("🎙️ Swobodne dyktowanie badania z transkrypcją AI")
-    st.caption("Nagraj mowę za pomocą wbudowanego mikrofonu poniżej. Sztuczna inteligencja automatycznie zamieni nagranie na tekst.")
+    st.caption("Nagraj mowę za pomocą mikrofonu poniżej. Sztuczna inteligencja zamieni nagranie na tekst.")
 
     if 'transcribed_text' not in st.session_state:
         st.session_state['transcribed_text'] = ""
@@ -112,12 +118,10 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
         if client is not None:
             with st.spinner("🧠 Sztuczna inteligencja przepisuje nagranie na tekst..."):
                 try:
-                    # Zapis pliku tymczasowego
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
                         tmp_file.write(audio_recorded.read())
                         tmp_path = tmp_file.name
 
-                    # Transkrypcja przez model OpenAI Whisper
                     with open(tmp_path, "rb") as audio_file:
                         transcript = client.audio.transcriptions.create(
                             model="whisper-1",
@@ -130,6 +134,8 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
                     st.success("✅ Transkrypcja gotowa!")
                 except Exception as e:
                     st.error(f"Błąd transkrypcji AI: {e}")
+        elif not HAS_OPENAI:
+            st.warning("⏳ Trwa instalacja modułu OpenAI na serwerze... Odśwież stronę za 1-2 minuty.")
         else:
             st.warning("⚠️ Brak skonfigurowanego klucza OPENAI_API_KEY w Secrets w panelu Streamlit Cloud.")
 
@@ -137,7 +143,7 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
     podyktowany_tekst = st.text_area(
         "Treść opisu (możesz edytować tekst ręcznie):",
         value=st.session_state['transcribed_text'],
-        placeholder="Nagraj głos powyżej, a tekst pojawi się tutaj...",
+        placeholder="Nagraj głos powyżej lub wpisz treść ręcznie...",
         height=200
     )
 
