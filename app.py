@@ -1,5 +1,13 @@
 import streamlit as st
-import requests
+import tempfile
+import os
+
+# Bezpieczny import biblioteki OpenAI
+try:
+    from openai import OpenAI
+    HAS_OPENAI = True
+except ImportError:
+    HAS_OPENAI = False
 
 # 1. Konfiguracja strony
 st.set_page_config(
@@ -8,7 +16,12 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# 2. Stylizacja CSS nawiązująca do marki usgvetscans.pl
+# Inicjalizacja klienta OpenAI
+client = None
+if HAS_OPENAI and "OPENAI_API_KEY" in st.secrets:
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+# 2. Stylizacja CSS
 st.markdown("""
     <style>
     :root {
@@ -63,7 +76,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- WYBÓR PŁCI I STANU W PANELU BOCZNYM ---
+# --- PANEL BOCZNY ---
 with st.sidebar:
     st.header("⚙️ Ustawienia Pacjenta")
     plec = st.radio(
@@ -78,7 +91,7 @@ with st.sidebar:
     )
     dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
-# WYBÓR TRYBU PRACY NA SAMEJ GÓRZE
+# WYBÓR TRYBU PRACY
 tryb = st.radio(
     "Wybierz tryb pracy:",
     ["🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
@@ -89,52 +102,51 @@ tryb = st.radio(
 st.markdown("---")
 
 # ==========================================
-# TRYB 1: DYKTOWANIE Z TRANSKRYPCJĄ AI (WHISPER)
+# TRYB 1: DYKTOWANIE Z TRANSKRYPCJĄ AI
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
-    st.subheader("🎙️ Dyktowanie badania głosem")
-    st.caption("Nagraj mowę za pomocą mikrofonu poniżej. Sztuczna inteligencja przepisze słowa na tekst po polsku.")
+    st.subheader("🎙️ Swobodne dyktowanie badania z transkrypcją AI")
+    st.caption("Kliknij ikonę mikrofonu, nagraj mowę i zatrzymaj nagrywanie. Sztuczna inteligencja zamieni słowa na tekst po polsku.")
 
-    if 'dictated_text' not in st.session_state:
-        st.session_state['dictated_text'] = ""
+    if 'transcribed_text' not in st.session_state:
+        st.session_state['transcribed_text'] = ""
 
-    # Natywny mikrofon Streamlita (brak problemów z ramkami HTML)
-    audio_file = st.audio_input("Kliknij ikone mikrofonu i podyktuj opis")
+    # Rejestrator dźwięku
+    audio_recorded = st.audio_input("Nagraj notatkę głosową USG")
 
-    if audio_file is not None:
-        if "OPENAI_API_KEY" in st.secrets and st.secrets["OPENAI_API_KEY"]:
-            api_key = st.secrets["OPENAI_API_KEY"]
-            
-            with st.spinner("🧠 Sztuczna inteligencja zamienia nagranie na tekst..."):
+    if audio_recorded is not None:
+        if client is not None:
+            with st.spinner("🧠 Sztuczna inteligencja przepisuje nagranie na tekst..."):
                 try:
-                    # Wysyłanie audio bezpośrednio przez zapytanie HTTP
-                    url = "https://api.openai.com/v1/audio/transcriptions"
-                    headers = {"Authorization": f"Bearer {api_key}"}
-                    files = {"file": ("audio.wav", audio_file.getvalue(), "audio/wav")}
-                    data = {"model": "whisper-1", "language": "pl"}
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+                        tmp_file.write(audio_recorded.read())
+                        tmp_path = tmp_file.name
 
-                    response = requests.post(url, headers=headers, files=files, data=data)
-
-                    if response.status_code == 200:
-                        st.session_state['dictated_text'] = response.json().get("text", "")
-                        st.success("✅ Przepisano tekst!")
-                    else:
-                        st.error(f"Błąd OpenAI API ({response.status_code}): {response.text}")
+                    with open(tmp_path, "rb") as audio_file:
+                        transcript = client.audio.transcriptions.create(
+                            model="whisper-1",
+                            file=audio_file,
+                            language="pl"
+                        )
+                    
+                    st.session_state['transcribed_text'] = transcript.text
+                    os.remove(tmp_path)
+                    st.success("✅ Transkrypcja gotowa!")
                 except Exception as e:
-                    st.error(f"Błąd połączenia: {e}")
+                    st.error(f"Błąd OpenAI API: {e}")
         else:
-            st.error("⚠️ Brak podpiętego klucza OPENAI_API_KEY w panelu Streamlit (Secrets). Patrz krok 3 poniżej.")
+            st.warning("⚠️ Brak podpiętego klucza OPENAI_API_KEY w panelu Streamlit (Secrets).")
 
-    # Pole tekstowe z przepisanym tekstem
+    # Pole edycji opisu
     podyktowany_tekst = st.text_area(
         "Wynik transkrypcji (możesz tutaj edytować tekst):",
-        value=st.session_state['dictated_text'],
-        height=200,
-        placeholder="Tutaj pojawi się rozpoznany tekst..."
+        value=st.session_state['transcribed_text'],
+        placeholder="Tutaj pojawi się rozpoznany tekst...",
+        height=200
     )
 
     if podyktowany_tekst:
-        final_report_text = f"OPIS BADANIA USG:\n\n{podyktowany_tekst}"
+        final_report_text = podyktowany_tekst
     else:
         final_report_text = "Czekam na nagranie głosu..."
 
