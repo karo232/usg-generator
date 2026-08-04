@@ -7,7 +7,7 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# 2. Stylizacja CSS
+# 2. Stylizacja CSS nawiązująca do marki usgvetscans.pl
 st.markdown("""
     <style>
     :root {
@@ -91,7 +91,7 @@ if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Puste tło)":
     
     podyktowany_tekst = st.text_area(
         "Podyktuj treść badania głosem:",
-        placeholder="np. Pęcherz moczowy miernie wypełniony ściana 2.5 mm, nerka lewa 4.5x2.8 cm...",
+        placeholder="np. Pęcherz moczowy miernie wypełniony ściana 2.5 mm, nerka lewa 4.5x2.8 cm z przebudową pozapalną...",
         height=250
     )
     
@@ -101,7 +101,7 @@ if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Puste tło)":
         final_report_text = "Czekam na dyktowanie... (Wpisz lub podyktuj treść powyżej)"
 
 # ==========================================
-# TRYB 2: TABELA WYMIARÓW DLA NORM
+# TRYB 2: TABELA WYMIARÓW DLA NORM Z WIELOKROPKIEM
 # ==========================================
 else:
     st.subheader("📏 Tabela Wymiarów")
@@ -126,6 +126,7 @@ else:
         dim_trzustka = st.text_input("Trzustka gr. (mm)", placeholder="np. 8")
         dim_pecherzyk = st.text_input("Pęcherzyk żółciowy ściana (mm)", placeholder="np. 1.1")
 
+    # Ustalanie dynamicznych wartości (wpisana wartość LUB '...')
     val_pecherz = dim_pecherz if dim_pecherz.strip() else "..."
     val_nerka_l = dim_nerka_l if dim_nerka_l.strip() else "..."
     val_nerka_p = dim_nerka_p if dim_nerka_p.strip() else "..."
@@ -178,6 +179,7 @@ else:
 
 st.markdown("---")
 
-# --- WYŚWIETLANIE WYNIKU ---
+# --- WYŚWIETLANIE WYNIKU Z PRZYCISKIEM KOPIOWANIA ---
 st.subheader("📋 Wygenerowany Opis USG:")
+st.caption("Użyj ikony 📋 w prawym górnym rogu poniższego pola, aby natychmiast skopiować cały raport.")
 st.code(final_report_text, language=None)
