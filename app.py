@@ -1,285 +1,77 @@
 import streamlit as st
 import tempfile
 import os
+import traceback
 
+st.set_page_config(page_title="USG Vet Scans - Pełna Diagnostyka", layout="wide", page_icon="🩺")
+
+st.title("🩺 USG Vet Scans — Diagnostyka Głęboka")
+
+# 1. WERSJE BIBLIOTEK
+st.subheader("1. Wersje zainstalowanych pakietów:")
 try:
-    from openai import OpenAI
-    HAS_OPENAI = True
-except ImportError:
-    HAS_OPENAI = False
+    import openai
+    st.write(f"📦 Wersja `openai`: **{openai.__version__}**")
+except Exception as e:
+    st.error(f"❌ Błąd importu `openai`: {e}")
 
-st.set_page_config(
-    page_title="USG Vet Scans - Generator Opisów", 
-    layout="wide", 
-    page_icon="🩺"
-)
-
-# === BEZPIECZNE POBIERANIE KLUCZA Z SECRETS ===
-api_key = None
+# 2. STATUS SECRETS & REPR()
+st.subheader("2. Odczyt ze `st.secrets`:")
 if "OPENAI_API_KEY" in st.secrets:
-    api_key = str(st.secrets["OPENAI_API_KEY"]).strip().strip('"').strip("'")
-
-client = None
-if HAS_OPENAI and api_key:
-    try:
-        client = OpenAI(api_key=api_key)
-    except Exception as e:
-        client = None
-
-# --- STYLIZACJA CSS ---
-st.markdown("""
-    <style>
-    .main-header {
-        background: linear-gradient(135deg, #0d5c58 0%, #147a74 100%);
-        padding: 1.8rem;
-        border-radius: 12px;
-        color: white;
-        margin-bottom: 1.5rem;
-    }
-    .main-header h1 { color: white !important; margin: 0; font-size: 2.1rem; }
-    .main-header p { color: #e2f1f0 !important; margin-top: 5px; }
-    </style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-    <div class="main-header">
-        <h1>🩺 USG Vet Scans</h1>
-        <p>Professional Veterinary Ultrasound Reporting System</p>
-    </div>
-""", unsafe_allow_html=True)
-
-# --- PANEL BOCZNY ---
-with st.sidebar:
-    st.header("⚙️ Ustawienia Pacjenta")
-    plec = st.radio(
-        "Płeć i stan fizjologiczny:",
-        [
-            "Suka (kastrowana / kikut)", 
-            "Suka (cała)", 
-            "Pies (samiec niekastrowany)", 
-            "Pies (samiec kastrowany)"
-        ],
-        key="plec_pacjenta"
-    )
-    dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
-
-tryb = st.radio(
-    "Wybierz tryb pracy:",
-    ["🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
-    horizontal=True,
-    key="tryb_pracy"
-)
+    raw_key = st.secrets["OPENAI_API_KEY"]
+    st.write(f"✔️ Typ obiektu: `{type(raw_key)}`")
+    st.write(f"📏 Długość ciągu: `{len(raw_key)}` znaków")
+    st.write(f"🔍 Początek klucza `sk-proj-`: `{str(raw_key).startswith('sk-proj-')}`")
+    st.write(f"🔬 Surowy odczyt `repr()` (pokazuje ukryte spacji/znaki \\n): `{repr(raw_key)}`")
+    
+    # Oczyszczenie klucza dla próby połączenia
+    clean_key = str(raw_key).strip().strip('"').strip("'")
+else:
+    clean_key = None
+    st.error("❌ `OPENAI_API_KEY` NIE występuje w `st.secrets`!")
 
 st.markdown("---")
 
-# ==========================================
-# TRYB 1: DYKTOWANIE GŁOSEM
-# ==========================================
-if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
-    st.subheader("🎙️ Swobodne dyktowanie badania z transkrypcją AI")
-    st.caption("Kliknij ikonę mikrofonu, nagraj mowę i zatrzymaj nagrywanie. Sztuczna inteligencja zamieni słowa na tekst po polsku.")
-
-    if 'transcribed_text' not in st.session_state:
-        st.session_state['transcribed_text'] = ""
-
-    audio_recorded = st.audio_input("Nagraj notatkę głosową USG")
-
-    if audio_recorded is not None:
-        if client is not None:
-            with st.spinner("🧠 Sztuczna inteligencja przepisuje nagranie na tekst..."):
-                try:
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-                        tmp_file.write(audio_recorded.read())
-                        tmp_path = tmp_file.name
-
-                    with open(tmp_path, "rb") as audio_file:
-                        transcript = client.audio.transcriptions.create(
-                            model="whisper-1",
-                            file=audio_file,
-                            language="pl"
-                        )
-                    
-                    st.session_state['transcribed_text'] = transcript.text
-                    os.remove(tmp_path)
-                    st.success("✅ Transkrypcja gotowa!")
-                except Exception as e:
-                    st.error(f"❌ Błąd z serwera OpenAI podczas transkrypcji: {e}")
-        else:
-            st.error("⚠️ Brak poprawnego klucza w panelu Secrets. Wklej klucz w Settings -> Secrets w Streamlit Cloud.")
-
-    podyktowany_tekst = st.text_area(
-        "Wynik transkrypcji (możesz tutaj edytować tekst):",
-        value=st.session_state['transcribed_text'],
-        placeholder="Tutaj pojawi się rozpoznany tekst...",
-        height=200
-    )
-
-    final_report_text = podyktowany_tekst if podyktowany_tekst else "Czekam na nagranie głosu..."
-
-    st.markdown("---")
-    st.subheader("📋 Wygenerowany Opis USG:")
-    st.code(final_report_text, language=None)
-
-# ==========================================
-# TRYB 2: TABELA WYMIARÓW + PATOLOGIE
-# ==========================================
+# 3. PRÓBA INICJALIZACJI KLIENTA OPENAI
+st.subheader("3. Test tworzenia obiektu `OpenAI(api_key=...)`:")
+client = None
+if clean_key:
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=clean_key)
+        st.success("🎉 Klient OpenAI został zainicjalizowany poprawnie!")
+    except Exception:
+        st.error("❌ Błąd podczas wykonywania `OpenAI(api_key=...)`:")
+        st.code(traceback.format_exc(), language="python")
 else:
-    st.subheader("📏 Tabela Wymiarów (dla opisów prawidłowych)")
-    st.caption("Wpisz same cyfry. Puste pola zostaną zastąpione wielokropkiem (...) wewnątrz normy.")
-    
-    tm1, tm2, tm3, tm4 = st.columns(4)
-    with tm1:
-        dim_pecherz = st.text_input("Pęcherz ściana (mm)", placeholder="np. 1.1")
-        dim_nerka_l = st.text_input("Nerka lewa (cm)", placeholder="np. 4.9 x 2.9")
-        dim_nerka_p = st.text_input("Nerka prawa (cm)", placeholder="np. 4.8 x 2.8")
+    st.warning("⚠️ Pomijanie inicjalizacji — brak klucza w Secrets.")
 
-    with tm2:
-        dim_spleen = st.text_input("Śledziona gr. (cm)", placeholder="np. 1.3")
-        dim_zoladek = st.text_input("Żołądek ściana (mm)", placeholder="np. 2.3")
+st.markdown("---")
 
-    with tm3:
-        dim_dwunastnica = st.text_input("Dwunastnica ściana (mm)", placeholder="np. 2.4")
-        dim_okresnica = st.text_input("Okrężnica ściana (mm)", placeholder="np. 1.3")
+# 4. TEST NAGRYWANIA AUDIO
+st.subheader("4. Test nagrywania i transkrypcji:")
+audio_recorded = st.audio_input("Nagraj krótki test głosu (np. 'test USG')")
 
-    with tm4:
-        dim_trzustka = st.text_input("Trzustka gr. (mm)", placeholder="np. 8")
-        dim_pecherzyk = st.text_input("Pęcherzyk żółciowy ściana (mm)", placeholder="np. 1.1")
+if audio_recorded is not None:
+    if client is not None:
+        with st.spinner("🧠 Transkrypcja w toku..."):
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+                    tmp_file.write(audio_recorded.read())
+                    tmp_path = tmp_file.name
 
-    val_pecherz = dim_pecherz if dim_pecherz.strip() else "..."
-    val_nerka_l = dim_nerka_l if dim_nerka_l.strip() else "..."
-    val_nerka_p = dim_nerka_p if dim_nerka_p.strip() else "..."
-    val_spleen = dim_spleen if dim_spleen.strip() else "..."
-    val_zoladek = dim_zoladek if dim_zoladek.strip() else "..."
-    val_dwunastnica = dim_dwunastnica if dim_dwunastnica.strip() else "..."
-    val_okresnica = dim_okresnica if dim_okresnica.strip() else "..."
-    val_trzustka = dim_trzustka if dim_trzustka.strip() else "..."
-    val_pecherzyk = dim_pecherzyk if dim_pecherzyk.strip() else "..."
-
-    st.markdown("---")
-    st.subheader("📝 Odchylenia i Patologie (Szybkie Przyciski)")
-
-    for key in ['pecherz_pat', 'nerki_pat', 'spleen_pat', 'jelita_pat', 'watroba_pat', 'trzustka_pat', 'plyn_pat']:
-        if key not in st.session_state:
-            st.session_state[key] = ""
-
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("**Pęcherz moczowy**")
-        if st.button("➕ Zapalenie / Pogrubiała ściana / Osad"):
-            st.session_state['pecherz_pat'] = "zmiernie wypełniony, ściana pogrubiała do 3 mm z cechami zapalenia, w świetle widoczny mierny osad"
-        pecherz_pat = st.text_area("Pęcherz odchylenia", key='pecherz_pat', height=70, label_visibility="collapsed")
-
-        st.markdown("**Nerki**")
-        col_n1, col_n2 = st.columns(2)
-        with col_n1:
-            if st.button("➕ Przebudowa zwyrodnieniowa"):
-                st.session_state['nerki_pat'] = "przebudowa zwyrodnieniowo-zapalna, zatarta granica korowo-rdzeniowa"
-        with col_n2:
-            if st.button("➕ Ogniska pozawałowe"):
-                st.session_state['nerki_pat'] = "z widocznymi drobnymi ogniskami pozawałowymi w korze"
-        nerki_pat = st.text_area("Nerki odchylenia", key='nerki_pat', height=70, label_visibility="collapsed")
-
-        st.markdown("**Śledziona**")
-        col_s1, col_s2 = st.columns(2)
-        with col_s1:
-            if st.button("➕ Niejednorodna"):
-                st.session_state['spleen_pat'] = "miąższ niejednorodny, drobno- i gruboośrodkowo przebudowany"
-        with col_s2:
-            if st.button("➕ Susp. chłoniak"):
-                st.session_state['spleen_pat'] = "powiększona, miąższ tarczyowato przebudowany z licznymi ogniskami hipoechogennymi (susp. chłoniak)"
-        spleen_pat = st.text_area("Śledziona odchylenia", key='spleen_pat', height=70, label_visibility="collapsed")
-
-    with c2:
-        st.markdown("**Dwunastnica i Jelita**")
-        if st.button("➕ Cechy IBD / Pogrubienie ściany"):
-            st.session_state['jelita_pat'] = "pętla jelita czczego pogrubiała do 5.9 mm na dł. 4 cm z zatartą warstwowością, węzły krezkowe odczynowe (cechy IBD)"
-        jelita_pat = st.text_area("Jelita odchylenia", key='jelita_pat', height=70, label_visibility="collapsed")
-
-        st.markdown("**Wątroba i Pęcherzyk**")
-        if st.button("➕ Hepatomegalia + Ogniska hipo"):
-            st.session_state['watroba_pat'] = "powiększona, miąższ z obecnością rozsianych ognisk hipoechogennych do 5.2 mm, zarys regularny"
-        watroba_pat = st.text_area("Wątroba odchylenia", key='watroba_pat', height=70, label_visibility="collapsed")
-
-        st.markdown("**Trzustka & Wolny Płyn**")
-        col_t1, col_t2 = st.columns(2)
-        with col_t1:
-            if st.button("➕ Zapalenie trzustki"):
-                st.session_state['trzustka_pat'] = "lewy płat powiększony do 22 mm, obszar hipoechogennym 22x18.5 mm z miejscowym odczynem tłuszczowym"
-        with col_t2:
-            if st.button("➕ Wolny płyn + Odczyn"):
-                st.session_state['plyn_pat'] = "Niewielki uogólniony odczyn zapalny tkanki tłuszczowej oraz niewielka ilość wolnego płynu w przestrzeni międzypętlowej."
-        trzustka_pat = st.text_area("Trzustka odchylenia", key='trzustka_pat', height=70, label_visibility="collapsed")
-        plyn_pat = st.text_area("Płyn odchylenia", key='plyn_pat', height=70, label_visibility="collapsed")
-
-    def get_pecherz(pat, d_pech):
-        if pat:
-            return f"Pęcherz moczowy {pat}. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
-        return f"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. {d_pech} mm, prawidłowej budowy, bez cech zapalenia, mocz aechogenny, bez mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
-
-    def get_rodne_prostata(plec_wybor):
-        if plec_wybor == "Pies (samiec niekastrowany)":
-            return "Gruczoł krokowy niepowiększony, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia. Jądra w mosznie, prawidłowej wielkości i echogeniczności, miąższ jednorodny, bez zmian ogniskowych."
-        elif plec_wybor == "Pies (samiec kastrowany)":
-            return "Gruczoł krokowy niepowiększony, fizjologicznie zmniejszony (stan po kastracji), miąższ jednorodny, bez cech zapalenia. Stan po orchidektomii – brak jąder w mosznie."
-        elif plec_wybor == "Suka (cała)":
-            return "Macica niepowiększona. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
-        else:
-            return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
-
-    def get_nerki(pat, dl, dp):
-        if pat:
-            wymiary_txt = f", lewa ok. {dl} cm, prawa ok. {dp} cm" if (dl != "..." or dp != "...") else ""
-            return f"Nerki prawidłowego kształtu{wymiary_txt}, {pat}. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
-        return f"Nerki prawidłowego kształtu, lewa około {dl} cm, prawa ok. {dp} cm, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
-
-    def get_spleen(pat, d_spleen):
-        if pat:
-            gr_txt = f", grubości około {d_spleen} cm" if d_spleen != "..." else ""
-            return f"Śledziona {pat}{gr_txt}, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
-        return f"Śledziona prawidłowej wielkości, grubości około {d_spleen} cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
-
-    def get_zoladek(d_zoladek):
-        return f"Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, pomiędzy fałdami gr. ok. {d_zoladek} mm, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego."
-
-    def get_jelita(pat, d_dw, d_ok):
-        if pat:
-            return f"{pat}. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, okrężnica wypełniona uformowanymi masami kałowymi."
-        return f"Ściana dwunastnicy niepogrubiała, ok. {d_dw} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana. Światło nieposzerzone, w świetle niewielka ilość strawionej treści. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości, ok. {d_ok} mm i warstwowości, okrężnica wypełniona uformowanymi masami kałowymi."
-
-    def get_watroba(pat, d_pech):
-        if pat:
-            return f"Wątroba {pat}. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
-        return f"Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości, gr. ok. {d_pech} mm i echogeniczności, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
-
-    def get_trzustka(pat, d_trz):
-        if pat:
-            return f"Trzustka {pat}. Przewód trzustkowy nieposzerzony."
-        return f"Trzustka prawidłowej wielkości, gr. ok. {d_trz} mm i kształtu, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony."
-
-    def get_plyn(pat):
-        if pat:
-            return f"{pat}"
-        return "Brak wolnego płynu w jamie brzusznej."
-
-    report_sections = [
-        get_pecherz(pecherz_pat, val_pecherz),
-        get_rodne_prostata(plec),
-        get_nerki(nerki_pat, val_nerka_l, val_nerka_p),
-        "Nadnercza prawidłowej wielkości i kształtu, bez uchwytnych zmian w budowie.",
-        get_spleen(spleen_pat, val_spleen),
-        get_zoladek(val_zoladek),
-        get_jelita(jelita_pat, val_dwunastnica, val_okresnica),
-        get_watroba(watroba_pat, val_pecherzyk),
-        get_trzustka(trzustka_pat, val_trzustka),
-        "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie.",
-        get_plyn(plyn_pat)
-    ]
-    
-    if dodaj_tarczyce:
-        report_sections.append("TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych.")
-
-    final_report_text = "\n\n".join(report_sections)
-
-    st.markdown("---")
-    st.subheader("📋 Wygenerowany Opis USG:")
-    st.code(final_report_text, language=None)
+                with open(tmp_path, "rb") as audio_file:
+                    transcript = client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        language="pl"
+                    )
+                
+                os.remove(tmp_path)
+                st.balloons()
+                st.success(f"✅ TRANSKRYPCJA ZAKOŃCZONA SUKCESEM: **{transcript.text}**")
+            except Exception:
+                st.error("❌ Błąd zgłoszony przez serwer OpenAI przy transkrypcji:")
+                st.code(traceback.format_exc(), language="python")
+    else:
+        st.error("❌ Brak aktywnego klienta OpenAI.")
