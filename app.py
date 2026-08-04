@@ -73,15 +73,15 @@ def add_to_history(report_text):
         st.session_state["reports_history"].insert(0, entry)
         st.session_state["reports_history"] = st.session_state["reports_history"][:10]
 
-# Precyzyjny podział układu rozrodczego na podstawie płci
+# Precyzyjne dopasowanie układu rozrodczego na podstawie dokładnej etykiety ze st.radio
 def get_rodne_text(plec_wybor):
-    if "niekastrowany" in plec_wybor.lower():
-        return "Gruczoł krokowy niepowiększony, normoechogenny, jednorodny echogenicznie, bez zmian guzowatych, bez cech zapalenia.\nJądra prawidłowej wielkości i kształtu, miąższ obu jąder bez uchwytnych zmian w budowie."
-    elif "samiec kastrowany" in plec_wybor.lower():
-        return "Gruczoł krokowy obkurczony, hipoechogenny, bez zmian w budowie, typowy obraz pokastracyjny."
-    elif "Suka (cała)" in plec_wybor:
+    if plec_wybor == "Pies (samiec niekastrowany)":
+        return "Gruczoł krokowy niepowiększony, wielkości ok. ... cm x ... cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia."
+    elif plec_wybor == "Pies (samiec kastrowany)":
+        return "Gruczoł krokowy niepowiększony, fizjologicznie zmniejszony (stan po kastracji), miąższ jednorodny, bez cech zapalenia. Stan po orchidektomii – brak jąder w mosznie."
+    elif plec_wybor == "Suka (cała)":
         return "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
-    else:
+    else: # Suka (kastrowana / kikut)
         return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
 # ==========================================
@@ -182,43 +182,40 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + Ścisły Szablon Medyc
                         
                         system_prompt = f"""
 Jesteś profesjonalnym edytorem raportów USG weterynaryjnego.
-Twoim zadaniem jest przekształcenie podyktowanej notatki lekarza w PEŁNE, BOGATE AKAPITY MEDYCZNE wg podanych niżej wzorców.
+Twoim zadaniem jest przekształcenie podyktowanej notatki lekarza w PEŁNE, BOGATE AKAPITY MEDYCZNE wg poniższych wzorców.
 
-KRYTYCZNA DANE PACJENTA:
-Płeć pacjenta wybranego w systemie: {plec}
-WYMAGANY SZABLON DLA UKŁADU ROZRODCZEGO/PROSTATY:
+WYMAGANY AKAPIT DLA UKŁADU ROZRODCZEGO/PROSTATY (Pacjent: {plec}):
 "{szablon_rozrodczy}"
-
-Dla wymienionego układu rozrodczego/prostaty UŻYJ POWYŻSZEGO SZABLONU.
+(Użyj powyższego akapitu jako bazy dla układu rozrodczego/prostaty, uzupełniając ewentualne wymiary lub patologie podane przez lekarza).
 
 MATRYCE AKAPITÓW DLA POZOSTAŁYCH NARZĄDÓW:
 
 PĘCHERZ MOCZOWY:
-"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. [WYMIAR] mm, prawidłowej budowy, bez cech zapalenia ostrego [LUB OPIS ZAPALENIA], mocz [STAN MOCZU, np. aechogenny / lekko zagęszczony], bez uchwytnych mineralizacji formujących kamienie/osad [LUB OPIS MINERALIZACJI], lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
+"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. [WYMIAR] mm, prawidłowej budowy, bez cech zapalenia [LUB OPIS ZAPALENIA], mocz [STAN MOCZU, np. aechogenny / lekko zagęszczony], bez mineralizacji w świetle [LUB OPIS MINERALIZACJI], lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
 
 NERKI:
-"Nerki prawidłowego kształtu i wielkości [EWENTUALNIE DODAJ WYMIARY: lewa ok. ... cm x ... cm, prawa ok. ... cm x ... cm], kora i rdzeń prawidłowej echogeniczności [LUB OPIS ECHOGENICZNOŚCI KORY], nerki o wyraźnej granicy korowo-rdzeniowej [LUB LEKKO ZATARTEJ], stosunek obu warstw zachowany [LUB POGRUBIAŁA KORA]. [DODAJ OPIS PRZEBUDOWY, NP. cechy umiarkowanej przebudowy przewlekłej, w typie zwyrodnieniowo-pozapalnym]. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone [LUB ZACHYŁKI MIEDNICZEK NIEPOSZERZONE], bez uchwytnych złogów w świetle [LUB OPIS MINERALIZACJI W ZACHYŁKACH]. Moczowody bez uchwytnych zmian w budowie."
+"Nerki prawidłowego kształtu i wielkości około [DODAJ WYMIARY, np. 4,9 cm x 2,9 cm, prawa ok. 4,8 cm x 2,8 cm], kora i rdzeń prawidłowej echogeniczności [LUB OPIS ECHOGENICZNOŚCI], nerki o wyraźnej granicy korowo-rdzeniowej [LUB ZATARTEJ], stosunek obu warstw zachowany. [DODAJ PRZEBUDOWĘ ZAPALNĄ/ZWYRODNIENIOWĄ JEŚLI PODYKTOWANO]. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
 
 NADNERCZA:
-"Nadnercza prawidłowej wielkości i kształtu [DODAJ WYMIAR, NP. grubości około 3,7-3,9 mm], bez uchwytnych zmian w budowie [LUB DODAJ ZWŁÓKNIENIA, NP. z drobnymi ogniskami zwłóknień, poza tym bez uchwytnych zmian w budowie]."
+"Nadnercza prawidłowej wielkości i kształtu, grubości około [WYMIAR] mm, bez uchwytnych zmian w budowie [LUB OPIS ZMIAN]."
 
 ŚLEDZIONA:
-"Śledziona prawidłowej wielkości [LUB LEKKO POWIĘKSZONA], grubości około [WYMIAR] cm na wysokości trzonu narządu, jednorodna echogenicznie, miąższ drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
+"Śledziona prawidłowej wielkości [LUB POWIĘKSZONA], grubości około [WYMIAR] cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
 
 ŻOŁĄDEK:
-"Żołądek nieco poszerzony [LUB OBKURCZONY], w świetle nieco zwiększona ilość płynnej treści i gazu, ściana o zachowanej warstwowości, na wysokości dna żołądka o prawidłowej grubości około [WYMIAR] mm, w trzonie [OPIS GRUBOŚCI TRZONU, NP. pogrubiała do ok. 3,1 mm, warstwa podśluzowa lekko pogrubiała, jak zapalnie przewlekle, z niewielkim zaostrzeniem], okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana [LUB LEKKO SPOWOLNIONA]."
+"Żołądek nieposzerzony [LUB POSZERZONY], w świetle niewielka ilość gazu [LUB TREŚCI], ściana o zachowanej warstwowości, o prawidłowej grubości około [WYMIAR] mm, w trzonie ok. [WYMIAR] mm, okolica odźwiernika bez zmian, ściana gr. ok. [WYMIAR] mm, drożność zachowana, perystaltyka zachowana [LUB SPOWOLNIONA], brak cech zapalenia ostrego [LUB OPIS ZAPALENIA]."
 
 JELITA I DWUNASTNICA:
-"Ściana dwunastnicy niepogrubiała, ok. [WYMIAR] mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa [LUB LEKKO SPOWOLNIONA]. [JEŚLI OPISANO PATOLOGIĘ JELITA CZCZEGO, DODAJ FULL AKAPIT: W śródbrzuszu obecność pętli jelita cienkiego o wyraźnie pogrubiałej ścianie do ok. ... mm na dł. ok. ... cm, odcinkowo o zatartej warstwowości, z pogrubiałą warstwą mięśniową do ... mm, w świetle płynna zawartość, wokół ostry odczyn zapalny – w diagnostyce różnicowej należy brać pod uwagę ostre odcinkowe zapalenie jelita czczego, ew. przebudowę o podłożu rozrostowym – sugerowana kontrola USG za ok. 7 dni]. Pozostałe jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa [LUB Z DYSKRETNYMI ZMIANAMI ZAPALNYMI], perystaltyka zachowana. Światło nieposzerzone. Węzły chłonne jelita czczego nieco przewlekle/pozapalnie przebudowane, śr. do ok. [WYMIAR] mm. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, okrężnica wypełniona uformowanymi masami kałowymi."
+"Ściana dwunastnicy niepogrubiała, ok. [WYMIAR] mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana [LUB OPIS ZMIAN ODCINKOWYCH JELITA CZCZEGO]. Światło nieposzerzone, w świetle niewielka ilość strawionej treści. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, ok. [WYMIAR] mm, okrężnica wypełniona uformowanymi masami kałowymi."
 
 WĄTROBA I PĘCHERZYK ŻÓŁCIOWY:
-"Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności [LUB POGRUBIAŁA DO ... mm Z CECHAMI ZAPALENIA I ZAGĘSZCZONĄ ŻÓŁCIĄ], bez cech niedrożności. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
+"Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. [WYMIAR] mm, bez uchwytnych złogów w świetle [LUB OPIS ZAGĘSZCZONA ŻÓŁĆ]. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
 
 TRZUSTKA:
-"Trzustka prawidłowej wielkości i kształtu, gr. ok. [WYMIAR] mm w płacie lewym/prawym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności [LUB O NIECO OBNIŻONEJ ECHOGENICZNOŚCI Z CECHAMI PRZEBUDOWY PRZEWLEKŁEJ/POZAPALNEJ], bez cech zapalenia ostrego. Przewód trzustkowy [POSZERZONY DO ... mm / NIEPOSZERZONY], bez uchwytnych złogów w świetle."
+"Trzustka prawidłowej wielkości i kształtu, gr. ok. [WYMIAR] mm w płacie prawym [LUB LEWYM], brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności [LUB PRZEBUDOWA], bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony [LUB POSZERZONY DO ... mm]."
 
 WĘZŁY CHŁONNE:
-"Pozostałe węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie."
+"Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie."
 
 WOLNY PŁYN:
 "Brak wolnego płynu w jamie brzusznej."
@@ -290,15 +287,15 @@ else:
         dim_trzustka = st.text_input("Trzustka gr. (mm)", placeholder="np. 8")
         dim_pecherzyk = st.text_input("Pęcherzyk żółciowy ściana (mm)", placeholder="np. 1.1")
 
-    val_pecherz = dim_pecherz.strip() if dim_pecherz.strip() else None
-    val_nerka_l = dim_nerka_l.strip() if dim_nerka_l.strip() else None
-    val_nerka_p = dim_nerka_p.strip() if dim_nerka_p.strip() else None
-    val_spleen = dim_spleen.strip() if dim_spleen.strip() else None
-    val_zoladek = dim_zoladek.strip() if dim_zoladek.strip() else None
-    val_dwunastnica = dim_dwunastnica.strip() if dim_dwunastnica.strip() else None
-    val_okresnica = dim_okresnica.strip() if dim_okresnica.strip() else None
-    val_trzustka = dim_trzustka.strip() if dim_trzustka.strip() else None
-    val_pecherzyk = dim_pecherzyk.strip() if dim_pecherzyk.strip() else None
+    val_pecherz = dim_pecherz.strip() if dim_pecherz.strip() else "..."
+    val_nerka_l = dim_nerka_l.strip() if dim_nerka_l.strip() else "..."
+    val_nerka_p = dim_nerka_p.strip() if dim_nerka_p.strip() else "..."
+    val_spleen = dim_spleen.strip() if dim_spleen.strip() else "..."
+    val_zoladek = dim_zoladek.strip() if dim_zoladek.strip() else "..."
+    val_dwunastnica = dim_dwunastnica.strip() if dim_dwunastnica.strip() else "..."
+    val_okresnica = dim_okresnica.strip() if dim_okresnica.strip() else "..."
+    val_trzustka = dim_trzustka.strip() if dim_trzustka.strip() else "..."
+    val_pecherzyk = dim_pecherzyk.strip() if dim_pecherzyk.strip() else "..."
 
     st.markdown("---")
     st.subheader("📝 Odchylenia i Patologie (Szybkie Przyciski)")
@@ -311,24 +308,24 @@ else:
     with c1:
         st.markdown("**Pęcherz moczowy**")
         if st.button("➕ Zapalenie / Pogrubiała ściana / Osad"):
-            st.session_state['pecherz_pat'] = "ściana pogrubiała, z cechami zapalenia ostrego, mocz z widocznym miernym osadem"
+            st.session_state['pecherz_pat'] = "zmiernie wypełniony, ściana pogrubiała do 3 mm z cechami zapalenia, w świetle widoczny mierny osad"
         pecherz_pat = st.text_area("Pęcherz odchylenia", key='pecherz_pat', height=70, label_visibility="collapsed")
 
         st.markdown("**Nerki**")
         col_n1, col_n2 = st.columns(2)
         with col_n1:
             if st.button("➕ Przebudowa zwyrodnieniowa"):
-                st.session_state['nerki_pat'] = "cechy umiarkowanej przebudowy przewlekłej, w typie zwyrodnieniowo-pozapalnym, zatarta granica korowo-rdzeniowa"
+                st.session_state['nerki_pat'] = "przebudowa zwyrodnieniowo-zapalna, zatarta granica korowo-rdzeniowa"
         with col_n2:
-            if st.button("➕ Drobne mineralizacje"):
-                st.session_state['nerki_pat'] = "w zachyłkach obecne drobne mineralizacje, ale bez cech niedrożności"
+            if st.button("➕ Ogniska pozawałowe"):
+                st.session_state['nerki_pat'] = "z widocznymi drobnymi ogniskami pozawałowymi w korze"
         nerki_pat = st.text_area("Nerki odchylenia", key='nerki_pat', height=70, label_visibility="collapsed")
 
         st.markdown("**Śledziona**")
         col_s1, col_s2 = st.columns(2)
         with col_s1:
-            if st.button("➕ Powiększona / Niejednorodna"):
-                st.session_state['spleen_pat'] = "lekko powiększona, miąższ niejednorodny, drobno- i gruboośrodkowo przebudowany"
+            if st.button("➕ Niejednorodna"):
+                st.session_state['spleen_pat'] = "miąższ niejednorodny, drobno- i gruboośrodkowo przebudowany"
         with col_s2:
             if st.button("➕ Susp. chłoniak"):
                 st.session_state['spleen_pat'] = "powiększona, miąższ tarczyowato przebudowany z licznymi ogniskami hipoechogennymi (susp. chłoniak)"
@@ -336,73 +333,61 @@ else:
 
     with c2:
         st.markdown("**Dwunastnica i Jelita**")
-        if st.button("➕ Cechy IBD / Zapalenie jelita czczego"):
-            st.session_state['jelita_pat'] = "W śródbrzuszu obecność pętli jelita cienkiego o wyraźnie pogrubiałej ścianie do 5.9 mm na dł. ok. 4 cm, z ostrym odczynem zapalnym (ostre odcinkowe zapalenie jelita czczego)"
+        if st.button("➕ Cechy IBD / Pogrubienie ściany"):
+            st.session_state['jelita_pat'] = "pętla jelita czczego pogrubiała do 5.9 mm na dł. 4 cm z zatartą warstwowością, węzły krezkowe odczynowe (cechy IBD)"
         jelita_pat = st.text_area("Jelita odchylenia", key='jelita_pat', height=70, label_visibility="collapsed")
 
         st.markdown("**Wątroba i Pęcherzyk**")
-        if st.button("➕ Pęcherzyk: Polipy / Śluz / Zagęszczony"):
-            st.session_state['watroba_pat'] = "Pęcherzyk żółciowy z obecnością zmian w typie polipów, ściana lekko pogrubiała, niewielka ilość zagęszczonej żółci w świetle"
+        if st.button("➕ Hepatomegalia + Ogniska hipo"):
+            st.session_state['watroba_pat'] = "powiększona, miąższ z obecnością rozsianych ognisk hipoechogennych do 5.2 mm, zarys regularny"
         watroba_pat = st.text_area("Wątroba odchylenia", key='watroba_pat', height=70, label_visibility="collapsed")
 
         st.markdown("**Trzustka & Wolny Płyn**")
         col_t1, col_t2 = st.columns(2)
         with col_t1:
-            if st.button("➕ Przebudowa pozapalna"):
-                st.session_state['trzustka_pat'] = "miąższ o nieco obniżonej echogeniczności, z cechami umiarkowanej przebudowy przewlekłej/pozapalnej, przewód poszerzony do 2.8 mm"
+            if st.button("➕ Zapalenie trzustki"):
+                st.session_state['trzustka_pat'] = "lewy płat powiększony do 22 mm, obszar hipoechogennym 22x18.5 mm z miejscowym odczynem tłuszczowym"
         with col_t2:
             if st.button("➕ Wolny płyn + Odczyn"):
                 st.session_state['plyn_pat'] = "Niewielki uogólniony odczyn zapalny tkanki tłuszczowej oraz niewielka ilość wolnego płynu w przestrzeni międzypętlowej."
         trzustka_pat = st.text_area("Trzustka odchylenia", key='trzustka_pat', height=70, label_visibility="collapsed")
         plyn_pat = st.text_area("Płyn odchylenia", key='plyn_pat', height=70, label_visibility="collapsed")
 
+    # AKAPITY TRYBU 2 ZGODNIE Z DOKŁADNYM WZORCEM
     def build_pecherz(pat, d_pech):
-        dim_txt = f" gr. ok. {d_pech} mm" if d_pech else ""
         if pat:
-            return f"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana{dim_txt}, {pat}, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
-        return f"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana{dim_txt}, prawidłowej budowy, bez cech zapalenia ostrego, mocz aechogenny, bez uchwytnych mineralizacji formujących kamienie/osad, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
+            return f"Pęcherz moczowy {pat}. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
+        return f"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. {d_pech} mm, prawidłowej budowy, bez cech zapalenia, mocz aechogenny, bez mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
 
     def build_nerki(pat, dl, dp):
-        wymiary_txt = ""
-        if dl and dp:
-            wymiary_txt = f", lewa ok. {dl} cm, prawa ok. {dp} cm"
-        elif dl:
-            wymiary_txt = f", lewa ok. {dl} cm"
-        elif dp:
-            wymiary_txt = f", prawa ok. {dp} cm"
-
         if pat:
-            return f"Nerki prawidłowego kształtu i wielkości{wymiary_txt}, {pat}. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone. Moczowody bez uchwytnych zmian w budowie."
-        return f"Nerki prawidłowego kształtu i wielkości{wymiary_txt}, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, zachyłki miedniczek nerkowych nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
+            wymiary_txt = f", lewa ok. {dl} cm, prawa ok. {dp} cm" if (dl != "..." or dp != "...") else ""
+            return f"Nerki prawidłowego kształtu{wymiary_txt}, {pat}. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
+        return f"Nerki prawidłowego kształtu i wielkości około {dl} cm x {dp} cm, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
 
     def build_spleen(pat, d_spleen):
-        dim_txt = f", grubości około {d_spleen} cm na wysokości trzonu narządu" if d_spleen else ""
         if pat:
-            return f"Śledziona {pat}{dim_txt}, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
-        return f"Śledziona prawidłowej wielkości{dim_txt}, jednorodna echogenicznie, miąższ drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
+            gr_txt = f", grubości około {d_spleen} cm" if d_spleen != "..." else ""
+            return f"Śledziona {pat}{gr_txt}, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
+        return f"Śledziona prawidłowej wielkości, grubości około {d_spleen} cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
 
     def build_zoladek(d_zoladek):
-        dim_txt = f", na wysokości dna gr. ok. {d_zoladek} mm" if d_zoladek else ""
-        return f"Żołądek obkurczony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości{dim_txt}, okolica odźwiernika bez zmian, brak cech zapalenia. Układ warstwowy zachowany, perystaltyka zachowana."
+        return f"Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości około ...-... mm, w trzonie ok. {d_zoladek} mm, okolica odźwiernika bez zmian, ściana gr. ok. ... mm, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego."
 
     def build_jelita(pat, d_dw, d_ok):
-        dw_txt = f", ok. {d_dw} mm" if d_dw else ""
-        ok_txt = f", ok. {d_ok} mm" if d_ok else ""
         if pat:
-            return f"Ściana dwunastnicy niepogrubiała{dw_txt}, warstwowość zachowana, perystaltyka prawidłowa. {pat}. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości{ok_txt}, okrężnica wypełniona uformowanymi masami kałowymi."
-        return f"Ściana dwunastnicy niepogrubiała{dw_txt}, warstwowość zachowana, światło nieposzerzone, wypełnione niewielką ilością płynnej treści, perystaltyka prawidłowa. Reszta jelit cienkich o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana. Światło nieposzerzone. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości{ok_txt}, okrężnica wypełniona uformowanymi masami kałowymi."
+            return f"{pat}. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, ok. {d_ok} mm, okrężnica wypełniona uformowanymi masami kałowymi."
+        return f"Ściana dwunastnicy niepogrubiała, ok. {d_dw} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana. Światło nieposzerzone, w świetle niewielka ilość strawionej treści. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, ok. {d_ok} mm, okrężnica wypełniona uformowanymi masami kałowymi."
 
     def build_watroba(pat, d_pech):
-        pech_txt = f", ściana gr. ok. {d_pech} mm" if d_pech else ""
         if pat:
-            return f"Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. {pat}{pech_txt}, bez cech niedrożności. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
-        return f"Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości{pech_txt} i echogeniczności, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
+            return f"Wątroba {pat}. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
+        return f"Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. {d_pech} mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
 
     def build_trzustka(pat, d_trz):
-        dim_txt = f", gr. ok. {d_trz} mm w płacie lewym" if d_trz else ""
         if pat:
-            return f"Płaty trzustki prawidłowej wielkości{dim_txt}, {pat}. Przewód trzustkowy bez złogów."
-        return f"Płaty trzustki prawidłowej wielkości i kształtu{dim_txt}, struktura niezmieniona, lokalizacja prawidłowa, miąższ izoechogeniczny z otaczającym tłuszczem. Przewód trzustkowy nieposzerzony."
+            return f"Trzustka {pat}. Przewód trzustkowy nieposzerzony."
+        return f"Trzustka prawidłowej wielkości i kształtu, gr. ok. {d_trz} mm w płacie prawym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony."
 
     def build_plyn(pat):
         if pat:
@@ -413,12 +398,13 @@ else:
         build_pecherz(pecherz_pat, val_pecherz),
         get_rodne_text(plec),
         build_nerki(nerki_pat, val_nerka_l, val_nerka_p),
-        "Pozostałe węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie.",
+        "Nadnercza prawidłowej wielkości i kształtu, grubości około ... mm, bez uchwytnych zmian w budowie.",
         build_spleen(spleen_pat, val_spleen),
         build_zoladek(val_zoladek),
         build_jelita(jelita_pat, val_dwunastnica, val_okresnica),
         build_watroba(watroba_pat, val_pecherzyk),
         build_trzustka(trzustka_pat, val_trzustka),
+        "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie.",
         build_plyn(plyn_pat)
     ]
     
