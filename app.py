@@ -122,12 +122,14 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
 
     if audio_recorded is not None:
         if client is not None:
-            with st.spinner("🧠 Sztuczna inteligencja przepisuje nagranie na tekst..."):
+            with st.spinner("🧠 Transkrypcja nagrania..."):
                 try:
+                    # Zapis nagrania z mikrofonu do pliku tymczasowego
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-                        tmp_file.write(audio_recorded.read())
+                        tmp_file.write(audio_recorded.getvalue())
                         tmp_path = tmp_file.name
 
+                    # Wysyłka oryginalnego pliku audio do OpenAI Whisper
                     with open(tmp_path, "rb") as audio_file:
                         transcript = client.audio.transcriptions.create(
                             model="whisper-1",
@@ -135,13 +137,19 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
                             language="pl"
                         )
                     
+                    # Nadpisanie stanu tekstem rozpoznanym przez Whisper AI
                     st.session_state['transcribed_text'] = transcript.text
                     os.remove(tmp_path)
-                    st.success("✅ Transkrypcja gotowa!")
                 except Exception as e:
                     st.error(f"❌ Błąd z serwera OpenAI podczas transkrypcji: {e}")
         else:
-            st.error("⚠️ Problem z połączeniem z OpenAI API. Sprawdź klucz w Secrets.")
+            st.error("⚠️ Brak połączenia z OpenAI API. Sprawdź klucz w Secrets.")
+
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        if st.button("🗑️ Wyczyść tekst"):
+            st.session_state['transcribed_text'] = ""
+            st.rerun()
 
     # Pole edycji opisu
     podyktowany_tekst = st.text_area(
