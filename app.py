@@ -1,6 +1,8 @@
 import streamlit as st
+
+# Bezpieczny import nagrywarki
 try:
-    from streamlit_mic_recorder import speech_to_text
+    from st_audiorec import st_audiorec
     HAS_MIC = True
 except ImportError:
     HAS_MIC = False
@@ -97,39 +99,24 @@ st.markdown("---")
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Mikrofon)":
     st.subheader("🎙️ Swobodne dyktowanie badania")
-    
-    # Inicjalizacja tekstu w pamięci
-    if 'spoken_text' not in st.session_state:
-        st.session_state['spoken_text'] = ""
-
-    st.caption("Kliknij przycisk poniżej, zezwól przeglądarce na dostęp do mikrofonu i zacznij mówić po polsku:")
+    st.caption("Użyj poniższego rejestratora dźwięku, a następnie wpisz lub wklej treść w pole poniżej:")
     
     if HAS_MIC:
-        # Przycisk nagrywania zamieniający mowę na tekst PL
-        text_from_mic = speech_to_text(
-            language='pl',
-            start_prompt="🎙️ Rozpocznij nagrywanie",
-            stop_prompt="⏹️ Zakończ i przetwórz",
-            just_once=True,
-            key='speech_recorder'
-        )
-        if text_from_mic:
-            st.session_state['spoken_text'] = text_from_mic
+        # Pasek nagrywania dźwięku z mikrofonu komputera
+        wav_audio_data = st_audiorec()
     else:
-        st.warning("Trwa instalacja modułu mikrofonu. Odśwież stronę za moment.")
+        st.info("Ładowanie modułu audio...")
 
-    # Pole tekstowe z podyktowaną lub ręcznie wpisaną treścią
     podyktowany_tekst = st.text_area(
-        "Rozpoznany tekst (możesz go tu również ręcznie edytować):",
-        value=st.session_state['spoken_text'],
-        placeholder="Naciśnij 'Rozpocznij nagrywanie' powyżej lub wpisz treść tutaj...",
+        "Wpisz lub podyktuj treść badania:",
+        placeholder="np. Pęcherz moczowy miernie wypełniony ściana 2.5 mm, nerka lewa 4.5x2.8 cm...",
         height=200
     )
     
     if podyktowany_tekst:
         final_report_text = f"OPIS BADANIA USG:\n\n{podyktowany_tekst}"
     else:
-        final_report_text = "Czekam na dyktowanie..."
+        final_report_text = "Czekam na opis..."
 
 # ==========================================
 # TRYB 2: TABELA WYMIARÓW + SZYBKIE PATOLOGIE
@@ -157,7 +144,6 @@ else:
         dim_trzustka = st.text_input("Trzustka gr. (mm)", placeholder="np. 8")
         dim_pecherzyk = st.text_input("Pęcherzyk żółciowy ściana (mm)", placeholder="np. 1.1")
 
-    # Dynamiczne wielokropki
     val_pecherz = dim_pecherz if dim_pecherz.strip() else "..."
     val_nerka_l = dim_nerka_l if dim_nerka_l.strip() else "..."
     val_nerka_p = dim_nerka_p if dim_nerka_p.strip() else "..."
@@ -179,13 +165,11 @@ else:
     c1, c2 = st.columns(2)
 
     with c1:
-        # PĘCHERZ
         st.markdown("**Pęcherz moczowy**")
         if st.button("➕ Zapalenie / Pogrubiała ściana / Osad"):
             st.session_state['pecherz_pat'] = "zmiernie wypełniony, ściana pogrubiała do 3 mm z cechami zapalenia, w świetle widoczny mierny osad"
         pecherz_pat = st.text_area("Pęcherz odchylenia", key='pecherz_pat', height=70, label_visibility="collapsed")
 
-        # NERKI
         st.markdown("**Nerki**")
         col_n1, col_n2 = st.columns(2)
         with col_n1:
@@ -196,7 +180,6 @@ else:
                 st.session_state['nerki_pat'] = "z widocznymi drobnymi ogniskami pozawałowymi w korze"
         nerki_pat = st.text_area("Nerki odchylenia", key='nerki_pat', height=70, label_visibility="collapsed")
 
-        # ŚLEDZIONA
         st.markdown("**Śledziona**")
         col_s1, col_s2 = st.columns(2)
         with col_s1:
@@ -208,19 +191,16 @@ else:
         spleen_pat = st.text_area("Śledziona odchylenia", key='spleen_pat', height=70, label_visibility="collapsed")
 
     with c2:
-        # JELITA & DWUNASTNICA
         st.markdown("**Dwunastnica i Jelita**")
         if st.button("➕ Cechy IBD / Pogrubienie ściany"):
             st.session_state['jelita_pat'] = "pętla jelita czczego pogrubiała do 5.9 mm na dł. 4 cm z zatartą warstwowością, węzły krezkowe odczynowe (cechy IBD)"
         jelita_pat = st.text_area("Jelita odchylenia", key='jelita_pat', height=70, label_visibility="collapsed")
 
-        # WĄTROBA & PĘCHERZYK
         st.markdown("**Wątroba i Pęcherzyk**")
         if st.button("➕ Hepatomegalia + Ogniska hipo"):
             st.session_state['watroba_pat'] = "powiększona, miąższ z obecnością rozsianych ognisk hipoechogennych do 5.2 mm, zarys regularny"
         watroba_pat = st.text_area("Wątroba odchylenia", key='watroba_pat', height=70, label_visibility="collapsed")
 
-        # TRZUSTKA & PŁYN
         st.markdown("**Trzustka & Wolny Płyn**")
         col_t1, col_t2 = st.columns(2)
         with col_t1:
@@ -232,7 +212,6 @@ else:
         trzustka_pat = st.text_area("Trzustka odchylenia", key='trzustka_pat', height=70, label_visibility="collapsed")
         plyn_pat = st.text_area("Płyn odchylenia", key='plyn_pat', height=70, label_visibility="collapsed")
 
-    # --- GENEROWANIE SEKCJI RAPORTU ---
     def get_pecherz(pat, d_pech):
         if pat:
             return f"Pęcherz moczowy {pat}. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
