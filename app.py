@@ -10,7 +10,7 @@ except ImportError:
 
 # 1. Konfiguracja strony
 st.set_page_config(
-    page_title="USG Vet Scans - Generator Opisów", 
+    page_title="USG Vet Scans - WERSJA TEST 2026-08-04", 
     layout="wide", 
     page_icon="🩺"
 )
@@ -18,8 +18,8 @@ st.set_page_config(
 # === INICJALIZACJA SESSION STATE ===
 if "transcribed_text" not in st.session_state:
     st.session_state["transcribed_text"] = ""
-if "last_audio" not in st.session_state:
-    st.session_state["last_audio"] = None
+if "last_audio_bytes" not in st.session_state:
+    st.session_state["last_audio_bytes"] = None
 
 # === ODCZYT KLUCZA Z SECRETS ===
 api_key = None
@@ -36,59 +36,29 @@ if HAS_OPENAI and api_key:
 # 2. Stylizacja CSS
 st.markdown("""
     <style>
-    :root {
-        --primary-color: #0d5c58;
-        --bg-color: #f8fafc;
-    }
-    
     .main-header {
         background: linear-gradient(135deg, #0d5c58 0%, #147a74 100%);
         padding: 1.8rem;
         border-radius: 12px;
         color: white;
         margin-bottom: 1.5rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
-    .main-header h1 {
-        color: white !important;
-        margin: 0;
-        font-size: 2.1rem;
-        font-weight: 600;
-    }
-    .main-header p {
-        color: #e2f1f0 !important;
-        margin-top: 5px;
-        margin-bottom: 0;
-    }
-
+    .main-header h1 { color: white !important; margin: 0; font-size: 2.1rem; }
+    .main-header p { color: #e2f1f0 !important; margin-top: 5px; }
     div.stButton > button {
-        background-color: #0d5c58;
-        color: white;
-        border-radius: 6px;
-        border: none;
-        padding: 0.3rem 0.8rem;
-        font-size: 0.85rem;
-    }
-    div.stButton > button:hover {
-        background-color: #147a74;
-        color: white;
-    }
-
-    .stRadio [role=radiogroup] {
-        padding: 5px;
+        background-color: #0d5c58; color: white; border-radius: 6px; border: none;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- BANER GŁÓWNY ---
+# BANER I WERYFIKACJA WERSJI (Krok z pytania użytkownika)
 st.markdown("""
     <div class="main-header">
-        <h1>🩺 USG Vet Scans</h1>
+        <h1>🩺 USG Vet Scans — WERSJA TEST 2026-08-04 18:30</h1>
         <p>Professional Veterinary Ultrasound Reporting System</p>
     </div>
 """, unsafe_allow_html=True)
 
-# --- PANEL BOCZNY ---
 with st.sidebar:
     st.header("⚙️ Ustawienia Pacjenta")
     plec = st.radio(
@@ -103,7 +73,6 @@ with st.sidebar:
     )
     dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
-# WYBÓR TRYBU PRACY
 tryb = st.radio(
     "Wybierz tryb pracy:",
     ["🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
@@ -120,51 +89,61 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
     st.subheader("🎙️ Swobodne dyktowanie badania z transkrypcją AI")
     st.caption("Kliknij ikonę mikrofonu, nagraj mowę i zatrzymaj nagrywanie. Sztuczna inteligencja zamieni słowa na tekst po polsku.")
 
-    # Widget mikrofonu z unikalnym key
-    audio_recorded = st.audio_input("Nagraj notatkę głosową USG", key="audio_recorder_input")
+    # 1. TEST CZY KOD WCHODZI W OBSŁUGĘ AUDIO
+    audio_recorded = st.audio_input("Nagraj notatkę głosową USG", key="audio_input_widget")
 
-    # Sprawdzanie czy pojawiło się NOWE nagranie (weryfikacja po bajtach)
     if audio_recorded is not None:
-        audio_bytes = audio_recorded.getvalue()
+        st.success("✅ [TEST 1] Wykryto nagranie audio z st.audio_input()")
+        current_bytes = audio_recorded.getvalue()
         
-        if audio_bytes != st.session_state["last_audio"]:
+        # Sprawdzamy, czy bajty się zmieniły
+        if current_bytes != st.session_state["last_audio_bytes"]:
+            st.info("🔄 [TEST 2] Wykryto NOWE bajty dźwiękowe. Przystępuję do wysyłki...")
+            
             if client is not None:
-                with st.spinner("🧠 Sztuczna inteligencja przepisuje mowę na tekst..."):
-                    try:
-                        # Zapamiętaj bajty tego nagrania
-                        st.session_state["last_audio"] = audio_bytes
+                st.info("🌐 [TEST 3] Wywołuję Whisper API (client.audio.transcriptions.create)...")
+                try:
+                    st.session_state["last_audio_bytes"] = current_bytes
 
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-                            tmp_file.write(audio_bytes)
-                            tmp_path = tmp_file.name
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+                        tmp_file.write(current_bytes)
+                        tmp_path = tmp_file.name
 
-                        with open(tmp_path, "rb") as audio_file:
-                            transcript = client.audio.transcriptions.create(
-                                model="whisper-1",
-                                file=audio_file,
-                                language="pl"
-                            )
-                        
-                        # Nadpisujemy session_state zsynchronizowany z text_area
-                        st.session_state["transcribed_text"] = transcript.text
-                        os.remove(tmp_path)
-                        
-                        # Wymuszenie ponownego wyrenderowania strony z nową zawartością
-                        st.rerun()
+                    with open(tmp_path, "rb") as audio_file:
+                        transcript = client.audio.transcriptions.create(
+                            model="whisper-1",
+                            file=audio_file,
+                            language="pl",
+                            prompt="Opis badania USG weterynaryjnego:"
+                        )
+                    
+                    st.success(f"🎉 [TEST 4] Odebrano odpowiedź z OpenAI API: {repr(transcript.text)}")
+                    
+                    # Logika podglądu Przed / Po
+                    old_val = st.session_state["transcribed_text"]
+                    st.write(f"📊 Stan Przed: `{repr(old_val)}`")
+                    
+                    st.session_state["transcribed_text"] = transcript.text
+                    
+                    st.write(f"📊 Stan Po: `{repr(st.session_state['transcribed_text'])}`")
+                    
+                    os.remove(tmp_path)
+                    st.rerun()
 
-                    except Exception as e:
-                        st.error(f"❌ Błąd z serwera OpenAI podczas transkrypcji: {e}")
+                except Exception as e:
+                    st.error(f"❌ [BŁĄD WHISPER] API wyrzuciło wyjątek: {e}")
             else:
-                st.error("⚠️ Problem z połączeniem z OpenAI API. Sprawdź klucz w Secrets.")
+                st.error("⚠️ Brak połączenia z OpenAI API — problem z kluczem API.")
+        else:
+            st.caption("ℹ️ To nagranie zostało już przetworzone. Nagraj nową notatkę.")
 
-    col1, col2 = st.columns([1, 5])
-    with col1:
-        if st.button("🗑️ Wyczyść tekst"):
-            st.session_state["transcribed_text"] = ""
-            st.session_state["last_audio"] = None
-            st.rerun()
+    # PRZYCISK CZYSZCZENIA STANU
+    if st.button("🗑️ Wyczyść tekst i zrestartuj stan"):
+        st.session_state["transcribed_text"] = ""
+        st.session_state["last_audio_bytes"] = None
+        st.rerun()
 
-    # Pole edycji opisu — UWAGA: Używa WYŁĄCZNIE key="transcribed_text" (bez parametry value=!)
+    # POLA WIDGETÓW — Prawidłowe powiązanie stanu wyłącznie przez key
     podyktowany_tekst = st.text_area(
         "Wynik transkrypcji (możesz tutaj edytować tekst):",
         key="transcribed_text",
@@ -176,7 +155,6 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
 
     st.markdown("---")
     st.subheader("📋 Wygenerowany Opis USG:")
-    st.caption("Użyj ikony 📋 w prawym górnym rogu poniższego pola, aby natychmiast skopiować cały raport.")
     st.code(final_report_text, language=None)
 
 # ==========================================
@@ -187,7 +165,6 @@ else:
     st.caption("Wpisz same cyfry. Puste pola zostaną zastąpione wielokropkiem (...) wewnątrz normy.")
     
     tm1, tm2, tm3, tm4 = st.columns(4)
-
     with tm1:
         dim_pecherz = st.text_input("Pęcherz ściana (mm)", placeholder="np. 1.1")
         dim_nerka_l = st.text_input("Nerka lewa (cm)", placeholder="np. 4.9 x 2.9")
@@ -217,14 +194,12 @@ else:
 
     st.markdown("---")
     st.subheader("📝 Odchylenia i Patologie (Szybkie Przyciski)")
-    st.caption("Kliknij przycisk, aby automatycznie wstawić opis patologii lub wpisz własny tekst w pole obok.")
 
     for key in ['pecherz_pat', 'nerki_pat', 'spleen_pat', 'jelita_pat', 'watroba_pat', 'trzustka_pat', 'plyn_pat']:
         if key not in st.session_state:
             st.session_state[key] = ""
 
     c1, c2 = st.columns(2)
-
     with c1:
         st.markdown("**Pęcherz moczowy**")
         if st.button("➕ Zapalenie / Pogrubiała ściana / Osad"):
@@ -344,5 +319,4 @@ else:
 
     st.markdown("---")
     st.subheader("📋 Wygenerowany Opis USG:")
-    st.caption("Użyj ikony 📋 w prawym górnym rogu poniższego pola, aby natychmiast skopiować cały raport.")
     st.code(final_report_text, language=None)
