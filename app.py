@@ -109,24 +109,23 @@ st.markdown("""
         box-shadow: 0 4px 8px rgba(35, 122, 159, 0.1) !important;
     }
 
-    /* KARTY TRYBÓW PRACY - WYRÓWNANE DO TEJ SAMEJ WIELKOŚCI */
+    /* KARTY TRYBÓW PRACY - SZTYWNO WYRÓWNANE DO TEJ SAMEJ WIELKOŚCI */
     div[role="radiogroup"] {
-        display: flex;
-        flex-direction: row;
-        gap: 15px;
-        justify-content: center;
-        background: transparent !important;
-        width: 100%;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important; /* Blokuje łamanie wierszy (sztywno jedna linia) */
+        gap: 15px !important;
+        width: 100% !important;
     }
     div[role="radiogroup"] > label {
         background-color: white !important;
         border: 2px solid #e0e6e8 !important;
-        border-radius: 15px !important;
+        border-radius: 12px !important;
         padding: 15px 10px !important;
         cursor: pointer !important;
         transition: all 0.3s ease !important;
         box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important;
-        flex: 1 1 0px !important; /* Wymusza jednakową szerokość */
+        flex: 1 1 33% !important; /* Wymusza dokładny, równy podział (3 karty = każda po ~33%) */
         min-height: 90px !important; /* Wymusza jednakową, stałą wysokość */
         text-align: center !important;
         display: flex !important;
@@ -138,7 +137,7 @@ st.markdown("""
     div[role="radiogroup"] > label > div:first-child {
         display: none !important; 
     }
-    /* Tekst na karcie */
+    /* Tekst na karcie trybu */
     div[role="radiogroup"] > label p {
         font-size: 1.15rem !important;
         font-weight: 700 !important;
@@ -192,17 +191,24 @@ def get_rodne_text(plec_wybor):
     else: return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
 # ==========================================
-# SIDEBAR: USTAWIENIA GÓRNE 
+# SIDEBAR: USTAWIENIA GÓRNE (KAFELKI!)
 # ==========================================
 with st.sidebar:
-    st.header("⚙️ Konfiguracja Pacjenta")
-    plec = st.selectbox(
-        "Wybierz płeć i stan fizjologiczny:",
-        ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"],
-        key="plec_pacjenta"
-    )
-    st.markdown("<br>", unsafe_allow_html=True)
-    dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
+    st.markdown("<h3 style='color: #135c7e; font-weight: 700; margin-bottom: 10px;'>⚙️ Konfiguracja Pacjenta</h3>", unsafe_allow_html=True)
+    
+    # KAFELEK 1: Wybór płci
+    with st.container(border=True):
+        st.markdown("<div style='font-weight: 600; color: #135c7e; margin-bottom: 5px; font-size: 15px;'>Wybierz płeć i stan fizjologiczny:</div>", unsafe_allow_html=True)
+        plec = st.selectbox(
+            "Płeć", # Ukryty label
+            ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"],
+            key="plec_pacjenta",
+            label_visibility="collapsed"
+        )
+        
+    # KAFELEK 2: Opcje dodatkowe
+    with st.container(border=True):
+        dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
 # ==========================================
 # WYBÓR TRYBU PRACY 
