@@ -26,6 +26,9 @@ if "reports_history" not in st.session_state:
 if "plec_pacjenta" not in st.session_state:
     st.session_state["plec_pacjenta"] = "Suka (kastrowana / kikut)"
 
+if "last_mode2_hash" not in st.session_state:
+    st.session_state["last_mode2_hash"] = ""
+
 # === ODCZYT KLUCZA Z SECRETS ===
 api_key = None
 if "OPENAI_API_KEY" in st.secrets:
@@ -76,16 +79,15 @@ def add_to_history(report_text):
         st.session_state["reports_history"].insert(0, entry)
         st.session_state["reports_history"] = st.session_state["reports_history"][:10]
 
-# SUPERBEZWZGLĘDNA FUNKCJA ROZPOZNAWANIA PŁCI
+# GŁÓWNA FUNKCJA DOPASOWUJĄCA UKŁAD ROZRODCZY - W 100% ZGODNA Z TWOIM WZORCEM
 def get_rodne_text(plec_wybor):
-    p = str(plec_wybor).lower()
-    if "niekastrowany" in p:
+    if "samiec niekastrowany" in plec_wybor:
         return "Gruczoł krokowy niepowiększony, wielkości ok. ... cm x ... cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia."
-    elif "samiec kastrowany" in p:
-        return "Gruczoł krokowy niepowiększony, fizjologicznie zmniejszony (stan po kastracji), miąższ jednorodny, bez cech zapalenia. Stan po orchidektomii – brak jąder w mosznie."
-    elif "suka (cała)" in p:
+    elif "samiec kastrowany" in plec_wybor:
+        return "Gruczoł krokowy obkurczony, hipoechogenny, bez zmian w budowie, typowy obraz pokastracyjny."
+    elif "cała" in plec_wybor:
         return "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
-    else:
+    else: # Kikut
         return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
 # ==========================================
@@ -101,8 +103,7 @@ with st.sidebar:
             "Pies (samiec niekastrowany)", 
             "Pies (samiec kastrowany)"
         ],
-        key="plec_pacjenta",
-        on_change=lambda: st.rerun()
+        key="plec_pacjenta"
     )
     dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
@@ -261,18 +262,16 @@ ZASADY WYLOTOWE:
         height=350
     )
 
-    final_report_text = podyktowany_tekst if podyktowany_tekst else "Czekam na nagranie głosu..."
-
     st.markdown("---")
     st.subheader("📋 Gotowy Raport USG (do skopiowania):")
-    st.code(final_report_text, language=None)
+    st.code(st.session_state["editable_report_area"], language=None)
 
 # ==========================================
 # TRYB 2: TABELA WYMIARÓW + SZYBKIE PATOLOGIE
 # ==========================================
 else:
     st.subheader("📏 Tabela Wymiarów (dla opisów prawidłowych i odchyleń)")
-    st.caption("Wpisz cyfry wymiarów lub wybierz patologię z przycisków. Wybór płci z panelu bocznego automatycznie ustala tekst rozrodu.")
+    st.caption("Wybór płci z lewego panelu automatycznie aktualizuje treść raportu bez klikania dodatkowych przycisków.")
     
     tm1, tm2, tm3, tm4 = st.columns(4)
     with tm1:
@@ -398,6 +397,7 @@ else:
             return f"{pat}"
         return "Brak wolnego płynu w jamie brzusznej."
 
+    # Kompilacja pełnego raportu dla Trybu 2
     report_sections = [
         build_pecherz(pecherz_pat, val_pecherz),
         get_rodne_text(st.session_state["plec_pacjenta"]),
@@ -417,24 +417,28 @@ else:
 
     mode2_final_report = "\n\n".join(report_sections)
     
+    # Inteligentne nadpisywanie tekst boxu, gdy zmieniono parametry w tabeli lub płeć
+    if mode2_final_report != st.session_state["last_mode2_hash"]:
+        st.session_state["editable_report_area"] = mode2_final_report
+        st.session_state["last_mode2_hash"] = mode2_final_report
+
     st.markdown("---")
     c_btn1, c_btn2 = st.columns([1, 4])
     with c_btn1:
-        if st.button("🔄 Wygeneruj / Odśwież Raport"):
+        if st.button("🔄 Odśwież / Przywróć z tabeli"):
             st.session_state["editable_report_area"] = mode2_final_report
             st.rerun()
     with c_btn2:
         if st.button("📋 Zapisz ten opis w historii"):
-            add_to_history(mode2_final_report)
+            add_to_history(st.session_state["editable_report_area"])
             st.success("Zapisano badanie do historii!")
 
     podyktowany_tekst = st.text_area(
         "Wygenerowany Raport USG (edytowalny tekst ciągły):",
-        value=mode2_final_report,
-        key="editable_report_area_mode2",
+        key="editable_report_area",
         height=350
     )
 
     st.markdown("---")
     st.subheader("📋 Gotowy Raport USG (do skopiowania):")
-    st.code(podyktowany_tekst, language=None)
+    st.code(st.session_state["editable_report_area"], language=None)
