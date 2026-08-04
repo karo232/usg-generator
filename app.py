@@ -23,6 +23,9 @@ if "editable_report_area" not in st.session_state:
 if "reports_history" not in st.session_state:
     st.session_state["reports_history"] = []
 
+if "plec_pacjenta" not in st.session_state:
+    st.session_state["plec_pacjenta"] = "Suka (kastrowana / kikut)"
+
 # === ODCZYT KLUCZA Z SECRETS ===
 api_key = None
 if "OPENAI_API_KEY" in st.secrets:
@@ -73,17 +76,17 @@ def add_to_history(report_text):
         st.session_state["reports_history"].insert(0, entry)
         st.session_state["reports_history"] = st.session_state["reports_history"][:10]
 
-# PRECYZYJNA FUNKCJA DOPASOWUJĄCA WZORZEC ROZRODU DLA 4 OPCJI
+# SUPERBEZWZGLĘDNA FUNKCJA ROZPOZNAWANIA PŁCI
 def get_rodne_text(plec_wybor):
-    if plec_wybor == "Suka (kastrowana / kikut)":
-        return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
-    elif plec_wybor == "Suka (cała)":
-        return "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
-    elif plec_wybor == "Pies (samiec niekastrowany)":
+    p = str(plec_wybor).lower()
+    if "niekastrowany" in p:
         return "Gruczoł krokowy niepowiększony, wielkości ok. ... cm x ... cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia."
-    elif plec_wybor == "Pies (samiec kastrowany)":
+    elif "samiec kastrowany" in p:
         return "Gruczoł krokowy niepowiększony, fizjologicznie zmniejszony (stan po kastracji), miąższ jednorodny, bez cech zapalenia. Stan po orchidektomii – brak jąder w mosznie."
-    return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
+    elif "suka (cała)" in p:
+        return "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
+    else:
+        return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
 # ==========================================
 # SIDEBAR: USTAWIENIA + HISTORIA 10 BADAŃ
@@ -98,7 +101,8 @@ with st.sidebar:
             "Pies (samiec niekastrowany)", 
             "Pies (samiec kastrowany)"
         ],
-        key="plec_pacjenta"
+        key="plec_pacjenta",
+        on_change=lambda: st.rerun()
     )
     dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
@@ -179,13 +183,13 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + Ścisły Szablon Medyc
             if raw_transcript and len(raw_transcript) > 2:
                 with st.spinner("🩺 KROK 2/2: Generowanie pełnych akapitów opisu USG..."):
                     try:
-                        szablon_rozrodczy = get_rodne_text(plec)
+                        szablon_rozrodczy = get_rodne_text(st.session_state["plec_pacjenta"])
                         
                         system_prompt = f"""
 Jesteś profesjonalnym edytorem raportów USG weterynaryjnego.
 Twoim zadaniem jest przekształcenie podyktowanej notatki lekarza w PEŁNE, BOGATE AKAPITY MEDYCZNE wg poniższych wzorców.
 
-KRYTYCZNA ZASADA PŁCI (Pacjent: {plec}):
+KRYTYCZNA ZASADA PŁCI (Pacjent: {st.session_state["plec_pacjenta"]}):
 Dla układu rozrodczego / prostaty MUSISZ UŻYĆ DOKŁADNIE PONIŻSZEGO WZORCA:
 "{szablon_rozrodczy}"
 
@@ -396,7 +400,7 @@ else:
 
     report_sections = [
         build_pecherz(pecherz_pat, val_pecherz),
-        get_rodne_text(plec),
+        get_rodne_text(st.session_state["plec_pacjenta"]),
         build_nerki(nerki_pat, val_nerka_l, val_nerka_p),
         "Nadnercza prawidłowej wielkości i kształtu, grubości około ... mm, bez uchwytnych zmian w budowie.",
         build_spleen(spleen_pat, val_spleen),
