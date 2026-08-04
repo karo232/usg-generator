@@ -1,16 +1,4 @@
-import subprocess
-import sys
-
-# Automatyczna wymuszona instalacja pakietu openai bezpośrednio z poziomu kodu
-try:
-    from openai import OpenAI
-except ImportError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "openai"])
-    from openai import OpenAI
-
 import streamlit as st
-import tempfile
-import os
 
 # 1. Konfiguracja strony
 st.set_page_config(
@@ -18,11 +6,6 @@ st.set_page_config(
     layout="wide", 
     page_icon="🩺"
 )
-
-# Inicjalizacja klienta OpenAI z Secrets
-client = None
-if "OPENAI_API_KEY" in st.secrets:
-    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # 2. Stylizacja CSS nawiązująca do marki usgvetscans.pl
 st.markdown("""
@@ -97,7 +80,7 @@ with st.sidebar:
 # WYBÓR TRYBU PRACY NA SAMEJ GÓRZE
 tryb = st.radio(
     "Wybierz tryb pracy:",
-    ["🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
+    ["🎙️ TRYB 1: Dyktowanie swobodne (Puste tło)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
     horizontal=True,
     key="tryb_pracy"
 )
@@ -105,53 +88,27 @@ tryb = st.radio(
 st.markdown("---")
 
 # ==========================================
-# TRYB 1: DYKTOWANIE Z TRANSKRYPCJĄ AI
+# TRYB 1: DYKTOWANIE SWOBODNE
 # ==========================================
-if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
-    st.subheader("🎙️ Swobodne dyktowanie badania z transkrypcją AI")
-    st.caption("Nagraj mowę za pomocą mikrofonu poniżej. Sztuczna inteligencja zamieni nagranie na tekst.")
+if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Puste tło)":
+    st.subheader("🎙️ Swobodne dyktowanie badania")
+    
+    st.info("""
+    💡 **Jak dyktować na tym komputerze:**
+    - **Metoda 1:** Kliknij w poniższe pole tekstowe i włącz dyktowanie w przeglądarce (Prawy Przycisk Myszy na polu $\rightarrow$ *Dyktowanie* lub ikona mikrofonu na pasku zadań).
+    - **Metoda 2:** Naciśnij skrót klawiszowy `Win + H` (Windows) lub 2x `Fn` (Mac).
+    """)
 
-    if 'transcribed_text' not in st.session_state:
-        st.session_state['transcribed_text'] = ""
-
-    # Rejestrator dźwięku
-    audio_recorded = st.audio_input("Nagraj notatkę głosową USG")
-
-    if audio_recorded is not None:
-        if client is not None:
-            with st.spinner("🧠 Sztuczna inteligencja przepisuje nagranie na tekst..."):
-                try:
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-                        tmp_file.write(audio_recorded.read())
-                        tmp_path = tmp_file.name
-
-                    with open(tmp_path, "rb") as audio_file:
-                        transcript = client.audio.transcriptions.create(
-                            model="whisper-1",
-                            file=audio_file,
-                            language="pl"
-                        )
-                    
-                    st.session_state['transcribed_text'] = transcript.text
-                    os.remove(tmp_path)
-                    st.success("✅ Transkrypcja gotowa!")
-                except Exception as e:
-                    st.error(f"Błąd transkrypcji AI: {e}")
-        else:
-            st.warning("⚠️ Brak skonfigurowanego klucza OPENAI_API_KEY w Secrets w panelu Streamlit Cloud.")
-
-    # Pole edycji opisu
     podyktowany_tekst = st.text_area(
-        "Treść opisu (możesz edytować tekst ręcznie):",
-        value=st.session_state['transcribed_text'],
-        placeholder="Nagraj głos powyżej lub wpisz treść ręcznie...",
-        height=200
+        "Wpisz lub podyktuj treść badania tutaj:",
+        placeholder="np. Pęcherz moczowy miernie wypełniony ściana 2.5 mm, nerka lewa 4.5x2.8 cm...",
+        height=220
     )
-
+    
     if podyktowany_tekst:
         final_report_text = f"OPIS BADANIA USG:\n\n{podyktowany_tekst}"
     else:
-        final_report_text = "Czekam na nagranie głosu..."
+        final_report_text = "Czekam na dyktowanie..."
 
     st.markdown("---")
     st.subheader("📋 Wygenerowany Opis USG:")
