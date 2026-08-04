@@ -2,76 +2,37 @@ import streamlit as st
 import tempfile
 import os
 
-# Bezpieczny import biblioteki OpenAI
 try:
     from openai import OpenAI
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
 
-# 1. Konfiguracja strony
 st.set_page_config(
     page_title="USG Vet Scans - Generator Opisów", 
     layout="wide", 
     page_icon="🩺"
 )
 
-# INICJALIZACJA KLUCZA API (Wpisany bezpośrednio w kodzie)
-# === PODMIEŃ PONIŻSZY TEKST NA TWÓJ NOWY KLUCZ Z OPENAI ===
-MY_API_KEY = "sk-proj-TUTAJ_WKLEJ_TWÓJ_NOWY_KLUCZ"
-
+# Odczyt klucza z bezpiecznego magazynu Streamlit Secrets
 client = None
-if HAS_OPENAI and MY_API_KEY and MY_API_KEY != "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":
-    client = OpenAI(api_key=MY_API_KEY)
+if HAS_OPENAI and "OPENAI_API_KEY" in st.secrets:
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# 2. Stylizacja CSS
 st.markdown("""
     <style>
-    :root {
-        --primary-color: #0d5c58;
-        --bg-color: #f8fafc;
-    }
-    
     .main-header {
         background: linear-gradient(135deg, #0d5c58 0%, #147a74 100%);
         padding: 1.8rem;
         border-radius: 12px;
         color: white;
         margin-bottom: 1.5rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
-    .main-header h1 {
-        color: white !important;
-        margin: 0;
-        font-size: 2.1rem;
-        font-weight: 600;
-    }
-    .main-header p {
-        color: #e2f1f0 !important;
-        margin-top: 5px;
-        margin-bottom: 0;
-    }
-
-    div.stButton > button {
-        background-color: #0d5c58;
-        color: white;
-        border-radius: 6px;
-        border: none;
-        padding: 0.3rem 0.8rem;
-        font-size: 0.85rem;
-    }
-    div.stButton > button:hover {
-        background-color: #147a74;
-        color: white;
-    }
-
-    .stRadio [role=radiogroup] {
-        padding: 5px;
-    }
+    .main-header h1 { color: white !important; margin: 0; font-size: 2.1rem; }
+    .main-header p { color: #e2f1f0 !important; margin-top: 5px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- BANER GŁÓWNY ---
 st.markdown("""
     <div class="main-header">
         <h1>🩺 USG Vet Scans</h1>
@@ -79,7 +40,6 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- PANEL BOCZNY ---
 with st.sidebar:
     st.header("⚙️ Ustawienia Pacjenta")
     plec = st.radio(
@@ -94,7 +54,6 @@ with st.sidebar:
     )
     dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
-# WYBÓR TRYBU PRACY
 tryb = st.radio(
     "Wybierz tryb pracy:",
     ["🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
@@ -104,9 +63,6 @@ tryb = st.radio(
 
 st.markdown("---")
 
-# ==========================================
-# TRYB 1: DYKTOWANIE Z TRANSKRYPCJĄ AI
-# ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
     st.subheader("🎙️ Swobodne dyktowanie badania z transkrypcją AI")
     st.caption("Kliknij ikonę mikrofonu, nagraj mowę i zatrzymaj nagrywanie. Sztuczna inteligencja zamieni słowa na tekst po polsku.")
@@ -114,7 +70,6 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
     if 'transcribed_text' not in st.session_state:
         st.session_state['transcribed_text'] = ""
 
-    # Rejestrator dźwięku
     audio_recorded = st.audio_input("Nagraj notatkę głosową USG")
 
     if audio_recorded is not None:
@@ -138,9 +93,8 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
                 except Exception as e:
                     st.error(f"Błąd OpenAI API: {e}")
         else:
-            st.warning("⚠️ Wklej swój klucz API w linii 18 pliku app.py na GitHubie!")
+            st.error("⚠️ Brak podpiętego klucza w panelu Streamlit Secrets (sprawdź Krok 3).")
 
-    # Pole edycji opisu
     podyktowany_tekst = st.text_area(
         "Wynik transkrypcji (możesz tutaj edytować tekst):",
         value=st.session_state['transcribed_text'],
@@ -148,25 +102,17 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
         height=200
     )
 
-    if podyktowany_tekst:
-        final_report_text = podyktowany_tekst
-    else:
-        final_report_text = "Czekam na nagranie głosu..."
+    final_report_text = podyktowany_tekst if podyktowany_tekst else "Czekam na nagranie głosu..."
 
     st.markdown("---")
     st.subheader("📋 Wygenerowany Opis USG:")
-    st.caption("Użyj ikony 📋 w prawym górnym rogu poniższego pola, aby natychmiast skopiować cały raport.")
     st.code(final_report_text, language=None)
 
-# ==========================================
-# TRYB 2: TABELA WYMIARÓW + SZYBKIE PATOLOGIE
-# ==========================================
 else:
     st.subheader("📏 Tabela Wymiarów (dla opisów prawidłowych)")
     st.caption("Wpisz same cyfry. Puste pola zostaną zastąpione wielokropkiem (...) wewnątrz normy.")
     
     tm1, tm2, tm3, tm4 = st.columns(4)
-
     with tm1:
         dim_pecherz = st.text_input("Pęcherz ściana (mm)", placeholder="np. 1.1")
         dim_nerka_l = st.text_input("Nerka lewa (cm)", placeholder="np. 4.9 x 2.9")
@@ -196,14 +142,12 @@ else:
 
     st.markdown("---")
     st.subheader("📝 Odchylenia i Patologie (Szybkie Przyciski)")
-    st.caption("Kliknij przycisk, aby automatycznie wstawić opis patologii lub wpisz własny tekst w pole obok.")
 
     for key in ['pecherz_pat', 'nerki_pat', 'spleen_pat', 'jelita_pat', 'watroba_pat', 'trzustka_pat', 'plyn_pat']:
         if key not in st.session_state:
             st.session_state[key] = ""
 
     c1, c2 = st.columns(2)
-
     with c1:
         st.markdown("**Pęcherz moczowy**")
         if st.button("➕ Zapalenie / Pogrubiała ściana / Osad"):
@@ -323,5 +267,4 @@ else:
 
     st.markdown("---")
     st.subheader("📋 Wygenerowany Opis USG:")
-    st.caption("Użyj ikony 📋 w prawym górnym rogu poniższego pola, aby natychmiast skopiować cały raport.")
     st.code(final_report_text, language=None)
