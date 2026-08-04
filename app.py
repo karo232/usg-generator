@@ -84,49 +84,42 @@ st.markdown("---")
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
     st.subheader("🎙️ Swobodne dyktowanie badania z transkrypcją AI")
-    st.caption("Kliknij ikonę mikrofonu, nagraj mowę i zatrzymaj nagrywanie. Sztuczna inteligencja zamieni słowa na tekst po polsku.")
+    st.caption("Kliknij ikonę mikrofonu, zacznij od razu mówić i zatrzymaj nagrywanie po zakończeniu dyktowania.")
 
     audio_recorded = st.audio_input("Nagraj notatkę głosową USG", key="audio_input_widget")
 
     if audio_recorded is not None:
         if client is not None:
-            st.info("🚀 Wywołuję Whisper...")
             tmp_path = None
-            try:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-                    tmp_file.write(audio_recorded.getvalue())
-                    tmp_path = tmp_file.name
+            with st.spinner("🧠 AI przetwarza nagranie głosu..."):
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+                        tmp_file.write(audio_recorded.getvalue())
+                        tmp_path = tmp_file.name
 
-                with open(tmp_path, "rb") as audio_file:
-                    transcript = client.audio.transcriptions.create(
-                        model="whisper-1",
-                        file=audio_file,
-                        language="pl",
-                        prompt="Opis badania USG weterynaryjnego u psa lub kota:"
-                    )
-                
-                # Zgodnie z zaleceniem: wpisujemy wynik bezpośrednio do key widgetu
-                st.session_state["editable_report_area"] = transcript.text
-                
-                # Diagnostyka szczegółowa obiektu odpowiedzi
-                st.success("✅ Whisper odpowiedział")
-                st.write("Typ odpowiedzi:", type(transcript))
-                st.write("Treść:", repr(transcript.text))
-                st.write("Długość:", len(transcript.text))
+                    with open(tmp_path, "rb") as audio_file:
+                        transcript = client.audio.transcriptions.create(
+                            model="whisper-1",
+                            file=audio_file,
+                            language="pl",
+                            prompt="Opis badania USG weterynaryjnego u psa lub kota, narządy jamy brzusznej:"
+                        )
+                    
+                    st.session_state["editable_report_area"] = transcript.text
+                    st.success("✅ Transkrypcja gotowa!")
 
-            except Exception as e:
-                st.error(f"❌ Błąd OpenAI API: {e}")
-            finally:
-                if tmp_path and os.path.exists(tmp_path):
-                    os.remove(tmp_path)
+                except Exception as e:
+                    st.error(f"❌ Błąd OpenAI API: {e}")
+                finally:
+                    if tmp_path and os.path.exists(tmp_path):
+                        os.remove(tmp_path)
         else:
             st.error("⚠️ Brak aktywnego klienta OpenAI. Sprawdź klucz w Secrets.")
 
-    # Widget text_area korzysta WYŁĄCZNIE z key= (bez parametru value=)
     podyktowany_tekst = st.text_area(
         "Wynik transkrypcji (możesz tutaj edytować tekst):",
         key="editable_report_area",
-        placeholder="Tutaj pojawi się rozpoznany tekst...",
+        placeholder="Tutaj pojawi się podyktowany tekst...",
         height=200
     )
 
