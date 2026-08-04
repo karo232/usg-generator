@@ -174,7 +174,6 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-
 # Funkcja pomocnicza do zapisywania w historii
 def add_to_history(report_text):
     if report_text and report_text.strip():
@@ -193,7 +192,7 @@ def get_rodne_text(plec_wybor):
     else: return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
 # ==========================================
-# SIDEBAR: USTAWIENIA GÓRNE (Teraz z rozwijaną listą!)
+# SIDEBAR: USTAWIENIA GÓRNE 
 # ==========================================
 with st.sidebar:
     st.header("⚙️ Konfiguracja Pacjenta")
@@ -206,7 +205,7 @@ with st.sidebar:
     dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
 # ==========================================
-# WYBÓR TRYBU PRACY (Wizualnie stają się Równymi Kartami przez CSS)
+# WYBÓR TRYBU PRACY 
 # ==========================================
 tryb = st.radio(
     "Wybierz tryb pracy:",
@@ -339,7 +338,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         with c1:
             st.markdown("**Pęcherz moczowy**")
             if st.button("➕ Zapalenie / Pogrubiała ściana / Osad"): st.session_state['pecherz_pat'] = "zmiernie wypełniony, ściana pogrubiała do 3 mm z cechami zapalenia, w świetle widoczny mierny osad"
-            st.text_area("Pęcherz - edycja", key='pecherz_pat', height=68, label_visibility="collapsed")
+            pecherz_pat = st.text_area("Pęcherz - edycja", key='pecherz_pat', height=68, label_visibility="collapsed")
 
             st.markdown("**Nerki**")
             col_n1, col_n2 = st.columns(2)
@@ -347,20 +346,20 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
                 if st.button("➕ Przebudowa zwyr."): st.session_state['nerki_pat'] = "przebudowa zwyrodnieniowo-zapalna, zatarta granica korowo-rdzeniowa"
             with col_n2:
                 if st.button("➕ Ogniska pozaw."): st.session_state['nerki_pat'] = "z widocznymi drobnymi ogniskami pozawałowymi w korze"
-            st.text_area("Nerki - edycja", key='nerki_pat', height=68, label_visibility="collapsed")
+            nerki_pat = st.text_area("Nerki - edycja", key='nerki_pat', height=68, label_visibility="collapsed")
 
             st.markdown("**Śledziona**")
             if st.button("➕ Niejednorodna"): st.session_state['spleen_pat'] = "miąższ niejednorodny, drobno- i gruboośrodkowo przebudowany"
-            st.text_area("Śledziona - edycja", key='spleen_pat', height=68, label_visibility="collapsed")
+            spleen_pat = st.text_area("Śledziona - edycja", key='spleen_pat', height=68, label_visibility="collapsed")
 
         with c2:
             st.markdown("**Dwunastnica i Jelita**")
             if st.button("➕ Cechy IBD / Pogrubienie"): st.session_state['jelita_pat'] = "pętla jelita czczego pogrubiała do 5.9 mm na dł. 4 cm z zatartą warstwowością, węzły krezkowe odczynowe (cechy IBD)"
-            st.text_area("Jelita - edycja", key='jelita_pat', height=68, label_visibility="collapsed")
+            jelita_pat = st.text_area("Jelita - edycja", key='jelita_pat', height=68, label_visibility="collapsed")
 
             st.markdown("**Wątroba i Pęcherzyk**")
             if st.button("➕ Hepatomegalia + Ogniska"): st.session_state['watroba_pat'] = "powiększona, miąższ z obecnością rozsianych ognisk hipoechogennych do 5.2 mm, zarys regularny"
-            st.text_area("Wątroba - edycja", key='watroba_pat', height=68, label_visibility="collapsed")
+            watroba_pat = st.text_area("Wątroba - edycja", key='watroba_pat', height=68, label_visibility="collapsed")
 
             st.markdown("**Trzustka & Płyn**")
             col_t1, col_t2 = st.columns(2)
@@ -368,8 +367,8 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
                 if st.button("➕ Zapalenie trzustki"): st.session_state['trzustka_pat'] = "lewy płat powiększony do 22 mm, obszar hipoechogennym 22x18.5 mm z miejscowym odczynem"
             with col_t2:
                 if st.button("➕ Wolny płyn"): st.session_state['plyn_pat'] = "Niewielki uogólniony odczyn zapalny tkanki tłuszczowej oraz niewielka ilość wolnego płynu."
-            st.text_area("Trzustka - edycja", key='trzustka_pat', height=68, label_visibility="collapsed")
-            st.text_area("Płyn - edycja", key='plyn_pat', height=68, label_visibility="collapsed")
+            trzustka_pat = st.text_area("Trzustka - edycja", key='trzustka_pat', height=68, label_visibility="collapsed")
+            plyn_pat = st.text_area("Płyn - edycja", key='plyn_pat', height=68, label_visibility="collapsed")
 
     # Funkcje budujące
     def b_pech(pat, d): return f"Pęcherz moczowy {pat}. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle." if pat else f"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. {d} mm, prawidłowej budowy, bez cech zapalenia, mocz aechogenny, bez mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
@@ -473,7 +472,6 @@ with st.sidebar:
         for i, item in enumerate(st.session_state["reports_history"]):
             label = f"🕒 {item['time']} - {item['snippet']}"
             if st.button(label, key=f"hist_{i}", use_container_width=True):
-                # Zależnie od tego, w którym jesteśmy trybie, uzupełniamy właściwe pole tekstowe
                 st.session_state["editable_report_area"] = item["text"]
                 st.session_state["editable_report_area_2"] = item["text"]
                 st.session_state["editable_report_area_3"] = item["text"]
