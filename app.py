@@ -1,4 +1,9 @@
 import streamlit as st
+try:
+    from streamlit_mic_recorder import speech_to_text
+    HAS_MIC = True
+except ImportError:
+    HAS_MIC = False
 
 # 1. Konfiguracja strony
 st.set_page_config(
@@ -80,7 +85,7 @@ with st.sidebar:
 # WYBÓR TRYBU PRACY NA SAMEJ GÓRZE
 tryb = st.radio(
     "Wybierz tryb pracy:",
-    ["🎙️ TRYB 1: Dyktowanie swobodne (Puste tło)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
+    ["🎙️ TRYB 1: Dyktowanie swobodne (Mikrofon)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
     horizontal=True,
     key="tryb_pracy"
 )
@@ -90,23 +95,44 @@ st.markdown("---")
 # ==========================================
 # TRYB 1: DYKTOWANIE SWOBODNE
 # ==========================================
-if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Puste tło)":
+if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Mikrofon)":
     st.subheader("🎙️ Swobodne dyktowanie badania")
-    st.caption("Kliknij w pole poniżej, włącz mikrofon na klawiaturze i podyktuj treść badania.")
     
+    # Inicjalizacja tekstu w pamięci
+    if 'spoken_text' not in st.session_state:
+        st.session_state['spoken_text'] = ""
+
+    st.caption("Kliknij przycisk poniżej, zezwól przeglądarce na dostęp do mikrofonu i zacznij mówić po polsku:")
+    
+    if HAS_MIC:
+        # Przycisk nagrywania zamieniający mowę na tekst PL
+        text_from_mic = speech_to_text(
+            language='pl',
+            start_prompt="🎙️ Rozpocznij nagrywanie",
+            stop_prompt="⏹️ Zakończ i przetwórz",
+            just_once=True,
+            key='speech_recorder'
+        )
+        if text_from_mic:
+            st.session_state['spoken_text'] = text_from_mic
+    else:
+        st.warning("Trwa instalacja modułu mikrofonu. Odśwież stronę za moment.")
+
+    # Pole tekstowe z podyktowaną lub ręcznie wpisaną treścią
     podyktowany_tekst = st.text_area(
-        "Podyktuj treść badania głosem:",
-        placeholder="np. Pęcherz moczowy miernie wypełniony ściana 2.5 mm, nerka lewa 4.5x2.8 cm z przebudową pozapalną...",
-        height=250
+        "Rozpoznany tekst (możesz go tu również ręcznie edytować):",
+        value=st.session_state['spoken_text'],
+        placeholder="Naciśnij 'Rozpocznij nagrywanie' powyżej lub wpisz treść tutaj...",
+        height=200
     )
     
     if podyktowany_tekst:
         final_report_text = f"OPIS BADANIA USG:\n\n{podyktowany_tekst}"
     else:
-        final_report_text = "Czekam na dyktowanie... (Wpisz lub podyktuj treść powyżej)"
+        final_report_text = "Czekam na dyktowanie..."
 
 # ==========================================
-# TRYB 2: TABELA WYMIARÓW + SZYBKIE PATOLOGIE (PRZYCISKI)
+# TRYB 2: TABELA WYMIARÓW + SZYBKIE PATOLOGIE
 # ==========================================
 else:
     st.subheader("📏 Tabela Wymiarów (dla opisów prawidłowych)")
@@ -146,7 +172,6 @@ else:
     st.subheader("📝 Odchylenia i Patologie (Szybkie Przyciski)")
     st.caption("Kliknij przycisk, aby automatycznie wstawić opis patologii lub wpisz własny tekst w pole obok.")
 
-    # Inicjalizacja session_state dla pól tekstowych patologii
     for key in ['pecherz_pat', 'nerki_pat', 'spleen_pat', 'jelita_pat', 'watroba_pat', 'trzustka_pat', 'plyn_pat']:
         if key not in st.session_state:
             st.session_state[key] = ""
@@ -279,7 +304,7 @@ else:
 
 st.markdown("---")
 
-# --- WYŚWIETLANIE WYNIKU Z PRZYCISKIEM KOPIOWANIA ---
+# --- WYŚWIETLANIE WYNIKU ---
 st.subheader("📋 Wygenerowany Opis USG:")
 st.caption("Użyj ikony 📋 w prawym górnym rogu poniższego pola, aby natychmiast skopiować cały raport do schowka.")
 st.code(final_report_text, language=None)
