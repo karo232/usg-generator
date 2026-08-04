@@ -313,6 +313,10 @@ ZASADY WYLOTOWE: Oddzielaj narządy nową linią. Zwracaj WYŁĄCZNIE czysty tek
     st.markdown("---")
     
     st.text_area("Edytor Raportu (Ostatnie poprawki):", key="editable_report_area", height=350)
+    
+    st.markdown("<h4 style='color: #135c7e;'>📋 Gotowy Raport (do skopiowania):</h4>", unsafe_allow_html=True)
+    st.code(st.session_state["editable_report_area"], language=None)
+
     if st.button("💾 Zapisz ten opis do historii", key="save_btn_tab1"):
         add_to_history(st.session_state["editable_report_area"])
         st.success("Zapisano badanie do paska bocznego!")
@@ -438,6 +442,9 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
 
     st.text_area("Edytor Raportu:", key="editable_report_area_2", height=350)
 
+    st.markdown("<h4 style='color: #135c7e;'>📋 Gotowy Raport (do skopiowania):</h4>", unsafe_allow_html=True)
+    st.code(st.session_state.get("editable_report_area_2", mode2_final_report), language=None)
+
 # ==========================================
 # TRYB 3: WYBÓR ZMIENIONYCH NARZĄDÓW
 # ==========================================
@@ -488,6 +495,9 @@ elif tryb == "📝 TRYB 3: Wybór Zmian":
     st.markdown("---")
     st.text_area("Edytor Raportu:", key="editable_report_area_3", height=350)
     
+    st.markdown("<h4 style='color: #135c7e;'>📋 Gotowy Raport (do skopiowania):</h4>", unsafe_allow_html=True)
+    st.code(st.session_state.get("editable_report_area_3", mode3_final_report), language=None)
+
     if st.button("💾 Zapisz ten opis do historii", key="save_btn_tab3"):
         add_to_history(st.session_state.get("editable_report_area_3", mode3_final_report))
         st.success("Zapisano badanie do paska bocznego!")
