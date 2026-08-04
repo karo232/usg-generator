@@ -80,7 +80,7 @@ with st.sidebar:
 # WYBÓR TRYBU PRACY NA SAMEJ GÓRZE
 tryb = st.radio(
     "Wybierz tryb pracy:",
-    ["🎙️ TRYB 1: Dyktowanie swobodne (Mikrofon)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
+    ["🎙️ TRYB 1: Dyktowanie swobodne (Puste tło)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
     horizontal=True,
     key="tryb_pracy"
 )
@@ -90,30 +90,21 @@ st.markdown("---")
 # ==========================================
 # TRYB 1: DYKTOWANIE SWOBODNE
 # ==========================================
-if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Mikrofon)":
+if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Puste tło)":
     st.subheader("🎙️ Swobodne dyktowanie badania")
     
-    col_mic, col_info = st.columns([1, 2])
-    
-    with col_mic:
-        st.markdown("**1. Nagraj głos:**")
-        # Wbudowany w Streamlit dyktafon
-        audio_value = st.audio_input("Nagraj notatkę głosową")
-
-    with col_info:
-        st.markdown("**2. Porada dla komputerów (Windows / Mac):**")
-        st.info("💡 **Najszybsze dyktowanie na komputerze:** Kliknij w pole tekstowe poniżej i naciśnij skrót **Win + H** (Windows) lub kliknij 2x **Fn** (Mac), aby włączyć dyktowanie tekstu w języku polskim bezpośrednio z klawiatury.")
+    st.info("💡 **Instrukcja dyktowania głosem na komputerze:** Kliknij w poniższe pole tekstowe i naciśnij skrót **Win + H** (Windows) lub kliknij 2x **Fn** (Mac). Mikrofon komputera włączy się i zacznie pisać po polsku!")
 
     podyktowany_tekst = st.text_area(
-        "3. Wpisz lub podyktuj treść badania tutaj:",
+        "Podyktuj lub wpisz treść badania tutaj:",
         placeholder="np. Pęcherz moczowy miernie wypełniony ściana 2.5 mm, nerka lewa 4.5x2.8 cm...",
-        height=200
+        height=220
     )
     
     if podyktowany_tekst:
         final_report_text = f"OPIS BADANIA USG:\n\n{podyktowany_tekst}"
     else:
-        final_report_text = "Czekam na opis..."
+        final_report_text = "Czekam na dyktowanie..."
 
 # ==========================================
 # TRYB 2: TABELA WYMIARÓW + SZYBKIE PATOLOGIE
