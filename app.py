@@ -1,5 +1,4 @@
 import streamlit as st
-from streamlit_mic_recorder import speech_to_text
 
 # 1. Konfiguracja strony
 st.set_page_config(
@@ -78,7 +77,7 @@ with st.sidebar:
     )
     dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
-# WYBÓR TRYBU PRACY NA SAMEJ GÓRZE
+# WYBÓR TRYBY PRACY NA SAMEJ GÓRZE
 tryb = st.radio(
     "Wybierz tryb pracy:",
     ["🎙️ TRYB 1: Dyktowanie swobodne", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
@@ -93,36 +92,29 @@ st.markdown("---")
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie swobodne":
     st.subheader("🎙️ Swobodne dyktowanie badania")
-    st.caption("Kliknij przycisk poniżej, podyktuj badanie po polsku i kliknij go ponownie, aby zakończyć. Tekst automatycznie wpisze się do opisu.")
+    
+    col_a1, col_a2 = st.columns([1, 2])
+    
+    with col_a1:
+        st.markdown("**1. Rejestrator audio z mikrofonu:**")
+        # Oficjalny natywny komponent Streamlit do rejestrowania dźwięku
+        audio_recorded = st.audio_input("Nagraj notatkę głosową USG")
 
-    # Pamięć sesji dla rozpoznanego tekstu
-    if 'text_spoken' not in st.session_state:
-        st.session_state['text_spoken'] = ""
-
-    # Profesjonalny komponent Speech-to-Text w czystym Pythonie
-    text_result = speech_to_text(
-        language='pl',
-        start_prompt="🎙️ Rozpocznij dyktowanie",
-        stop_prompt="⏹️ Zakończ i przelicz na tekst",
-        just_once=False,
-        use_container_width=False,
-        key='STT'
-    )
-
-    if text_result:
-        st.session_state['text_spoken'] = text_result
-
-    # Okno edycji podyktowanego tekstu
-    podyktowany_tekst = st.text_area(
-        "Podyktowany tekst (możesz go edytować ręcznie):",
-        value=st.session_state['text_spoken'],
-        height=200
-    )
+    with col_a2:
+        st.markdown("**2. Treść opisu:**")
+        st.caption("Kliknij poniżej i podyktuj badanie głosem lub odsłuchaj nagrane wyżej audio i wpisz treść:")
+        
+        podyktowany_tekst = st.text_area(
+            "Wpisz/podyktuj opis badania:",
+            placeholder="np. Pęcherz moczowy miernie wypełniony ściana 2.5 mm, nerka lewa 4.5x2.8 cm...",
+            height=180,
+            label_visibility="collapsed"
+        )
 
     if podyktowany_tekst:
         final_report_text = f"OPIS BADANIA USG:\n\n{podyktowany_tekst}"
     else:
-        final_report_text = "Czekam na dyktowanie..."
+        final_report_text = "Czekam na wpisanie lub podyktowanie treści..."
 
     st.markdown("---")
     st.subheader("📋 Wygenerowany Opis USG:")
@@ -294,5 +286,5 @@ else:
 
     st.markdown("---")
     st.subheader("📋 Wygenerowany Opis USG:")
-    st.caption("Użyj ikony 📋 w prawym górnym rogu poniższego pola, aby natychmiast skopiować cały raport do schowka.")
+    st.caption("Użyj ikony 📋 w prawym górnym rogu poniższego pola, aby natychmiast skopiować cały raport.")
     st.code(final_report_text, language=None)
