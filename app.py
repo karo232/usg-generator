@@ -16,10 +16,13 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# Inicjalizacja klienta OpenAI
+# INICJALIZACJA KLUCZA API (Wpisany bezpośrednio w kodzie)
+# === PODMIEŃ PONIŻSZY TEKST NA TWÓJ NOWY KLUCZ Z OPENAI ===
+MY_API_KEY = "sk-proj-TUTAJ_WKLEJ_TWÓJ_NOWY_KLUCZ"
+
 client = None
-if HAS_OPENAI and "OPENAI_API_KEY" in st.secrets:
-    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+if HAS_OPENAI and MY_API_KEY and MY_API_KEY != "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":
+    client = OpenAI(api_key=MY_API_KEY)
 
 # 2. Stylizacja CSS
 st.markdown("""
@@ -135,7 +138,7 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
                 except Exception as e:
                     st.error(f"Błąd OpenAI API: {e}")
         else:
-            st.warning("⚠️ Brak podpiętego klucza OPENAI_API_KEY w panelu Streamlit (Secrets).")
+            st.warning("⚠️ Wklej swój klucz API w linii 18 pliku app.py na GitHubie!")
 
     # Pole edycji opisu
     podyktowany_tekst = st.text_area(
