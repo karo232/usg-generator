@@ -73,16 +73,17 @@ def add_to_history(report_text):
         st.session_state["reports_history"].insert(0, entry)
         st.session_state["reports_history"] = st.session_state["reports_history"][:10]
 
-# Precyzyjne dopasowanie układu rozrodczego na podstawie dokładnej etykiety ze st.radio
+# PRECYZYJNA FUNKCJA DOPASOWUJĄCA WZORZEC ROZRODU DLA 4 OPCJI
 def get_rodne_text(plec_wybor):
-    if plec_wybor == "Pies (samiec niekastrowany)":
+    if plec_wybor == "Suka (kastrowana / kikut)":
+        return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
+    elif plec_wybor == "Suka (cała)":
+        return "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
+    elif plec_wybor == "Pies (samiec niekastrowany)":
         return "Gruczoł krokowy niepowiększony, wielkości ok. ... cm x ... cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia."
     elif plec_wybor == "Pies (samiec kastrowany)":
         return "Gruczoł krokowy niepowiększony, fizjologicznie zmniejszony (stan po kastracji), miąższ jednorodny, bez cech zapalenia. Stan po orchidektomii – brak jąder w mosznie."
-    elif plec_wybor == "Suka (cała)":
-        return "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
-    else: # Suka (kastrowana / kikut)
-        return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
+    return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
 # ==========================================
 # SIDEBAR: USTAWIENIA + HISTORIA 10 BADAŃ
@@ -184,35 +185,35 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + Ścisły Szablon Medyc
 Jesteś profesjonalnym edytorem raportów USG weterynaryjnego.
 Twoim zadaniem jest przekształcenie podyktowanej notatki lekarza w PEŁNE, BOGATE AKAPITY MEDYCZNE wg poniższych wzorców.
 
-WYMAGANY AKAPIT DLA UKŁADU ROZRODCZEGO/PROSTATY (Pacjent: {plec}):
+KRYTYCZNA ZASADA PŁCI (Pacjent: {plec}):
+Dla układu rozrodczego / prostaty MUSISZ UŻYĆ DOKŁADNIE PONIŻSZEGO WZORCA:
 "{szablon_rozrodczy}"
-(Użyj powyższego akapitu jako bazy dla układu rozrodczego/prostaty, uzupełniając ewentualne wymiary lub patologie podane przez lekarza).
 
 MATRYCE AKAPITÓW DLA POZOSTAŁYCH NARZĄDÓW:
 
 PĘCHERZ MOCZOWY:
-"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. [WYMIAR] mm, prawidłowej budowy, bez cech zapalenia [LUB OPIS ZAPALENIA], mocz [STAN MOCZU, np. aechogenny / lekko zagęszczony], bez mineralizacji w świetle [LUB OPIS MINERALIZACJI], lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
+"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. [WYMIAR] mm, prawidłowej budowy, bez cech zapalenia, mocz aechogenny, bez mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
 
 NERKI:
-"Nerki prawidłowego kształtu i wielkości około [DODAJ WYMIARY, np. 4,9 cm x 2,9 cm, prawa ok. 4,8 cm x 2,8 cm], kora i rdzeń prawidłowej echogeniczności [LUB OPIS ECHOGENICZNOŚCI], nerki o wyraźnej granicy korowo-rdzeniowej [LUB ZATARTEJ], stosunek obu warstw zachowany. [DODAJ PRZEBUDOWĘ ZAPALNĄ/ZWYRODNIENIOWĄ JEŚLI PODYKTOWANO]. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
+"Nerki prawidłowego kształtu i wielkości około [DODAJ WYMIARY, np. 4,9 cm x 2,9 cm, prawa ok. 4,8 cm x 2,8 cm], kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
 
 NADNERCZA:
-"Nadnercza prawidłowej wielkości i kształtu, grubości około [WYMIAR] mm, bez uchwytnych zmian w budowie [LUB OPIS ZMIAN]."
+"Nadnercza prawidłowej wielkości i kształtu, grubości około [WYMIAR] mm, bez uchwytnych zmian w budowie."
 
 ŚLEDZIONA:
-"Śledziona prawidłowej wielkości [LUB POWIĘKSZONA], grubości około [WYMIAR] cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
+"Śledziona prawidłowej wielkości, grubości około [WYMIAR] cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
 
 ŻOŁĄDEK:
-"Żołądek nieposzerzony [LUB POSZERZONY], w świetle niewielka ilość gazu [LUB TREŚCI], ściana o zachowanej warstwowości, o prawidłowej grubości około [WYMIAR] mm, w trzonie ok. [WYMIAR] mm, okolica odźwiernika bez zmian, ściana gr. ok. [WYMIAR] mm, drożność zachowana, perystaltyka zachowana [LUB SPOWOLNIONA], brak cech zapalenia ostrego [LUB OPIS ZAPALENIA]."
+"Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości około ...-... mm, w trzonie ok. [WYMIAR] mm, okolica odźwiernika bez zmian, ściana gr. ok. [WYMIAR] mm, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego."
 
 JELITA I DWUNASTNICA:
-"Ściana dwunastnicy niepogrubiała, ok. [WYMIAR] mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana [LUB OPIS ZMIAN ODCINKOWYCH JELITA CZCZEGO]. Światło nieposzerzone, w świetle niewielka ilość strawionej treści. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, ok. [WYMIAR] mm, okrężnica wypełniona uformowanymi masami kałowymi."
+"Ściana dwunastnicy niepogrubiała, ok. [WYMIAR] mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana. Światło nieposzerzone, w świetle niewielka ilość strawionej treści. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, ok. [WYMIAR] mm, okrężnica wypełniona uformowanymi masami kałowymi."
 
 WĄTROBA I PĘCHERZYK ŻÓŁCIOWY:
-"Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. [WYMIAR] mm, bez uchwytnych złogów w świetle [LUB OPIS ZAGĘSZCZONA ŻÓŁĆ]. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
+"Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. [WYMIAR] mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
 
 TRZUSTKA:
-"Trzustka prawidłowej wielkości i kształtu, gr. ok. [WYMIAR] mm w płacie prawym [LUB LEWYM], brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności [LUB PRZEBUDOWA], bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony [LUB POSZERZONY DO ... mm]."
+"Trzustka prawidłowej wielkości i kształtu, gr. ok. [WYMIAR] mm w płacie prawym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony."
 
 WĘZŁY CHŁONNE:
 "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie."
@@ -353,7 +354,6 @@ else:
         trzustka_pat = st.text_area("Trzustka odchylenia", key='trzustka_pat', height=70, label_visibility="collapsed")
         plyn_pat = st.text_area("Płyn odchylenia", key='plyn_pat', height=70, label_visibility="collapsed")
 
-    # AKAPITY TRYBU 2 ZGODNIE Z DOKŁADNYM WZORCEM
     def build_pecherz(pat, d_pech):
         if pat:
             return f"Pęcherz moczowy {pat}. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
