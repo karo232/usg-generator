@@ -32,6 +32,9 @@ if "last_mode2_hash" not in st.session_state:
 if "last_mode3_hash" not in st.session_state:
     st.session_state["last_mode3_hash"] = ""
 
+if "processed_audio_size" not in st.session_state:
+    st.session_state["processed_audio_size"] = 0
+
 # === ODCZYT KLUCZA Z SECRETS ===
 api_key = None
 if "OPENAI_API_KEY" in st.secrets:
@@ -82,7 +85,7 @@ def add_to_history(report_text):
         st.session_state["reports_history"].insert(0, entry)
         st.session_state["reports_history"] = st.session_state["reports_history"][:10]
 
-# GŁÓWNA FUNKCJA DOPASOWUJĄCA UKŁAD ROZRODCZY - W 100% ZGODNA Z WZORCEM
+# GŁÓWNA FUNKCJA DOPASOWUJĄCA UKŁAD ROZRODCZY
 def get_rodne_text(plec_wybor):
     p = str(plec_wybor).lower()
     if "niekastrowany" in p:
@@ -95,7 +98,7 @@ def get_rodne_text(plec_wybor):
         return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
 # ==========================================
-# SIDEBAR: USTAWIENIA + HISTORIA 10 BADAŃ
+# SIDEBAR: USTAWIENIA (Rysowane na górze)
 # ==========================================
 with st.sidebar:
     st.header("⚙️ Ustawienia Pacjenta")
@@ -107,26 +110,9 @@ with st.sidebar:
             "Pies (samiec niekastrowany)", 
             "Pies (samiec kastrowany)"
         ],
-        key="plec_pacjenta",
-        on_change=lambda: st.rerun()
+        key="plec_pacjenta"
     )
     dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
-
-    st.markdown("---")
-    st.header("📜 Historia ostatnich badań")
-    
-    if st.session_state["reports_history"]:
-        for i, item in enumerate(st.session_state["reports_history"]):
-            label = f"🕒 {item['time']} - {item['snippet']}"
-            if st.button(label, key=f"hist_{i}"):
-                st.session_state["editable_report_area"] = item["text"]
-                st.rerun()
-
-        if st.button("🗑️ Wyczyść historię"):
-            st.session_state["reports_history"] = []
-            st.rerun()
-    else:
-        st.caption("Brak zapisanych badań w obecnej sesji.")
 
 tryb = st.radio(
     "Wybierz tryb pracy:",
@@ -146,58 +132,57 @@ st.markdown("---")
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
     st.subheader("🎙️ Swobodne dyktowanie badania z generacją wg Ścisłego Wzorca Medycznego")
-    st.caption("Podyktuj obserwacje. AI wstawi je w dokładnie zdefiniowane, pełne akapity szablonowe i automatycznie zapisze w historii.")
+    st.caption("Podyktuj obserwacje. AI wstawi je w dokładnie zdefiniowane, pełne akapity szablonowe.")
 
     audio_recorded = st.audio_input("Nagraj notatkę głosową USG", key="audio_input_widget")
 
     if audio_recorded is not None:
-        if client is not None:
-            tmp_path = None
-            raw_transcript = ""
+        current_audio_size = len(audio_recorded.getvalue())
+        
+        # Przetwarzaj tylko, jeśli nagrano nowe audio (wielkość pliku jest inna)
+        if current_audio_size != st.session_state["processed_audio_size"]:
+            st.session_state["processed_audio_size"] = current_audio_size
             
-            with st.spinner("🧠 KROK 1/2: Rozpoznawanie mowy (Whisper)..."):
-                try:
-                    file_ext = ".wav"
-                    if hasattr(audio_recorded, "name") and audio_recorded.name:
-                        ext = os.path.splitext(audio_recorded.name)[1]
-                        if ext:
-                            file_ext = ext
-                    elif hasattr(audio_recorded, "type") and "webm" in audio_recorded.type:
-                        file_ext = ".webm"
-
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
-                        tmp_file.write(audio_recorded.getvalue())
-                        tmp_path = tmp_file.name
-
-                    with open(tmp_path, "rb") as audio_file:
-                        prompt_vet = (
-                            "Transkrypcja opisu badania USG weterynaryjnego u psa lub kota. "
-                            "Słownictwo: wątroba, śledziona, nerki, trzustka, pęcherz moczowy, "
-                            "jelita, dwunastnica, żołądek, okrężnica, nadnercza, prostata, macica, jajniki, "
-                            "polipy, miedniczki, mineralizacje, zachyłki, jelito czcze, BŚO."
-                        )
-                        res = client.audio.transcriptions.create(
-                            model="whisper-1",
-                            file=audio_file,
-                            language="pl",
-                            prompt=prompt_vet
-                        )
-                        raw_transcript = res.text.strip() if res.text else ""
-
-                except Exception as e:
-                    st.error(f"❌ Błąd transkrypcji: {e}")
-                finally:
-                    if tmp_path and os.path.exists(tmp_path):
-                        os.remove(tmp_path)
-
-            if raw_transcript and len(raw_transcript) > 2:
-                with st.spinner("🩺 KROK 2/2: Generowanie pełnych akapitów opisu USG..."):
+            if client is not None:
+                tmp_path = None
+                raw_transcript = ""
+                
+                with st.spinner("🧠 KROK 1/2: Rozpoznawanie mowy (Whisper)..."):
                     try:
-                        szablon_rozrodczy = get_rodne_text(st.session_state["plec_pacjenta"])
-                        
-                        system_prompt = f"""
+                        file_ext = ".wav"
+                        if hasattr(audio_recorded, "name") and audio_recorded.name:
+                            ext = os.path.splitext(audio_recorded.name)[1]
+                            if ext: file_ext = ext
+
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
+                            tmp_file.write(audio_recorded.getvalue())
+                            tmp_path = tmp_file.name
+
+                        with open(tmp_path, "rb") as audio_file:
+                            prompt_vet = (
+                                "Transkrypcja opisu badania USG weterynaryjnego. Słownictwo: wątroba, śledziona, nerki, "
+                                "trzustka, pęcherz moczowy, jelita, dwunastnica, żołądek, okrężnica, nadnercza, prostata, "
+                                "macica, jajniki, polipy, miedniczki, mineralizacje, zachyłki, jelito czcze, BŚO."
+                            )
+                            res = client.audio.transcriptions.create(
+                                model="whisper-1", file=audio_file, language="pl", prompt=prompt_vet
+                            )
+                            raw_transcript = res.text.strip() if res.text else ""
+
+                    except Exception as e:
+                        st.error(f"❌ Błąd transkrypcji: {e}")
+                    finally:
+                        if tmp_path and os.path.exists(tmp_path):
+                            os.remove(tmp_path)
+
+                if raw_transcript and len(raw_transcript) > 2:
+                    with st.spinner("🩺 KROK 2/2: Generowanie pełnych akapitów opisu USG..."):
+                        try:
+                            szablon_rozrodczy = get_rodne_text(st.session_state["plec_pacjenta"])
+                            
+                            system_prompt = f"""
 Jesteś profesjonalnym edytorem raportów USG weterynaryjnego.
-Twoim zadaniem jest przekształcenie podyktowanej notatki lekarza w PEŁNE, BOGATE AKAPITY MEDYCZNE wg poniższych wzorców.
+Przekształć notatkę w PEŁNE AKAPITY MEDYCZNE wg wzorców.
 
 KRYTYCZNA ZASADA PŁCI (Pacjent: {st.session_state["plec_pacjenta"]}):
 Dla układu rozrodczego / prostaty MUSISZ UŻYĆ DOKŁADNIE PONIŻSZEGO WZORCA:
@@ -237,32 +222,33 @@ WOLNY PŁYN:
 
 {( 'TARCZYCA:\n"TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych."' if dodaj_tarczyce else '' )}
 
-ZASADY WYLOTOWE:
-- Oddzielaj narządy nową linią.
-- Zwracaj WYŁĄCZNIE czysty tekst opisu medycznego.
+ZASADY WYLOTOWE: Oddzielaj narządy nową linią. Zwracaj WYŁĄCZNIE czysty tekst opisu medycznego.
 """
+                            response = client.chat.completions.create(
+                                model="gpt-4o-mini",
+                                messages=[
+                                    {"role": "system", "content": system_prompt},
+                                    {"role": "user", "content": f"Podyktowane:\n{raw_transcript}"}
+                                ],
+                                temperature=0.0
+                            )
+                            
+                            corrected_text = response.choices[0].message.content.strip()
+                            st.session_state["editable_report_area"] = corrected_text
+                            st.success("✅ Generowanie wzorcowego raportu zakończone!")
 
-                        response = client.chat.completions.create(
-                            model="gpt-4o-mini",
-                            messages=[
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": f"Słowa podyktowane przez lekarza:\n{raw_transcript}"}
-                            ],
-                            temperature=0.0
-                        )
-                        
-                        corrected_text = response.choices[0].message.content.strip()
-                        st.session_state["editable_report_area"] = corrected_text
-                        add_to_history(corrected_text)
-                        st.success("✅ Generowanie wzorcowego raportu zakończone!")
-
-                    except Exception as e:
-                        st.session_state["editable_report_area"] = raw_transcript
-                        st.warning(f"⚠️ Błąd generatora: {e}")
+                        except Exception as e:
+                            st.session_state["editable_report_area"] = raw_transcript
+                            st.warning(f"⚠️ Błąd generatora: {e}")
             else:
-                st.warning("⚠️ Brak rozpoznanej mowy. Podyktuj wynik badania.")
-        else:
-            st.error("⚠️ Brak aktywnego klienta OpenAI API.")
+                st.error("⚠️ Brak aktywnego klienta OpenAI API.")
+    else:
+        st.session_state["processed_audio_size"] = 0 # reset po usunięciu nagrania
+
+    st.markdown("---")
+    if st.button("📋 Zapisz ten opis w historii (Tryb 1)"):
+        add_to_history(st.session_state["editable_report_area"])
+        st.success("Zapisano badanie do historii!")
 
     podyktowany_tekst = st.text_area(
         "Wygenerowany Raport USG (edytowalny tekst ciągły):",
@@ -280,7 +266,6 @@ ZASADY WYLOTOWE:
 # ==========================================
 elif tryb == "📏 TRYB 2: Tabela wymiarów":
     st.subheader("📏 Tabela Wymiarów (dla opisów prawidłowych i odchyleń)")
-    st.caption("Wybór płci z lewego panelu automatycznie aktualizuje treść raportu bez klikania dodatkowych przycisków.")
     
     tm1, tm2, tm3, tm4 = st.columns(4)
     with tm1:
@@ -339,9 +324,6 @@ elif tryb == "📏 TRYB 2: Tabela wymiarów":
         with col_s1:
             if st.button("➕ Niejednorodna"):
                 st.session_state['spleen_pat'] = "miąższ niejednorodny, drobno- i gruboośrodkowo przebudowany"
-        with col_s2:
-            if st.button("➕ Susp. chłoniak"):
-                st.session_state['spleen_pat'] = "powiększona, miąższ tarczyowato przebudowany z licznymi ogniskami hipoechogennymi (susp. chłoniak)"
         spleen_pat = st.text_area("Śledziona odchylenia", key='spleen_pat', height=70, label_visibility="collapsed")
 
     with c2:
@@ -361,8 +343,8 @@ elif tryb == "📏 TRYB 2: Tabela wymiarów":
             if st.button("➕ Zapalenie trzustki"):
                 st.session_state['trzustka_pat'] = "lewy płat powiększony do 22 mm, obszar hipoechogennym 22x18.5 mm z miejscowym odczynem tłuszczowym"
         with col_t2:
-            if st.button("➕ Wolny płyn + Odczyn"):
-                st.session_state['plyn_pat'] = "Niewielki uogólniony odczyn zapalny tkanki tłuszczowej oraz niewielka ilość wolnego płynu w przestrzeni międzypętlowej."
+            if st.button("➕ Wolny płyn"):
+                st.session_state['plyn_pat'] = "Niewielki uogólniony odczyn zapalny tkanki tłuszczowej oraz niewielka ilość wolnego płynu."
         trzustka_pat = st.text_area("Trzustka odchylenia", key='trzustka_pat', height=70, label_visibility="collapsed")
         plyn_pat = st.text_area("Płyn odchylenia", key='plyn_pat', height=70, label_visibility="collapsed")
 
@@ -406,7 +388,6 @@ elif tryb == "📏 TRYB 2: Tabela wymiarów":
             return f"{pat}"
         return "Brak wolnego płynu w jamie brzusznej."
 
-    # Kompilacja pełnego raportu dla Trybu 2
     report_sections = [
         build_pecherz(pecherz_pat, val_pecherz),
         get_rodne_text(st.session_state["plec_pacjenta"]),
@@ -431,15 +412,10 @@ elif tryb == "📏 TRYB 2: Tabela wymiarów":
         st.session_state["last_mode2_hash"] = mode2_final_report
 
     st.markdown("---")
-    c_btn1, c_btn2 = st.columns([1, 4])
-    with c_btn1:
-        if st.button("🔄 Odśwież / Przywróć z tabeli"):
-            st.session_state["editable_report_area"] = mode2_final_report
-            st.rerun()
-    with c_btn2:
-        if st.button("📋 Zapisz ten opis w historii"):
-            add_to_history(st.session_state["editable_report_area"])
-            st.success("Zapisano badanie do historii!")
+    
+    if st.button("📋 Zapisz ten opis w historii (Tryb 2)"):
+        add_to_history(st.session_state["editable_report_area"])
+        st.success("Zapisano badanie do historii!")
 
     podyktowany_tekst = st.text_area(
         "Wygenerowany Raport USG (edytowalny tekst ciągły):",
@@ -458,7 +434,6 @@ elif tryb == "📝 TRYB 3: Wybór zmienionych narządów":
     st.subheader("📝 Inteligentny Szablon (Nadpisywanie Zmian)")
     st.caption("Zaznacz narząd, w którym występują zmiany. Pojawi się pole wstępnie wypełnione tekstem z NORMĄ – wykasuj lub dopisz w nim to, co dotyczy patologii. Niezaznaczone narządy pozostają całkowicie zdrowe.")
 
-    # Definicja wszystkich norm dla Trybu 3
     organs_defaults = {
         "Pęcherz moczowy": "Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana prawidłowej budowy, mocz aechogenny, bez mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle.",
         "Układ rozrodczy": get_rodne_text(st.session_state["plec_pacjenta"]),
@@ -477,10 +452,8 @@ elif tryb == "📝 TRYB 3: Wybór zmienionych narządów":
         organs_defaults["Tarczyca"] = "TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych."
 
     final_mode3_paragraphs = []
-
     st.markdown("---")
     
-    # Generowanie interfejsu (Checkboxy i pola tekstowe)
     for organ_name, default_text in organs_defaults.items():
         is_changed = st.checkbox(f"⚠️ Zmiany w narządzie: **{organ_name}**", key=f"chk_{organ_name}")
         if is_changed:
@@ -491,7 +464,6 @@ elif tryb == "📝 TRYB 3: Wybór zmienionych narządów":
 
     mode3_final_report = "\n\n".join(final_mode3_paragraphs)
 
-    # Dynamiczne odświeżanie
     if mode3_final_report != st.session_state.get("last_mode3_hash", ""):
         st.session_state["editable_report_area"] = mode3_final_report
         st.session_state["last_mode3_hash"] = mode3_final_report
@@ -510,3 +482,24 @@ elif tryb == "📝 TRYB 3: Wybór zmienionych narządów":
     st.markdown("---")
     st.subheader("📋 Gotowy Raport USG (do skopiowania):")
     st.code(st.session_state["editable_report_area"], language=None)
+
+# ==========================================
+# GŁÓWNA ZMIANA: HISTORIA RYSOWANA NA SAMYM KOŃCU KODU
+# Dzięki temu historia wie o wszystkich zmianach (jest 100% zsynchronizowana)
+# ==========================================
+with st.sidebar:
+    st.markdown("---")
+    st.header("📜 Historia ostatnich badań")
+    
+    if st.session_state["reports_history"]:
+        for i, item in enumerate(st.session_state["reports_history"]):
+            label = f"🕒 {item['time']} - {item['snippet']}"
+            if st.button(label, key=f"hist_{i}"):
+                st.session_state["editable_report_area"] = item["text"]
+                st.rerun()
+
+        if st.button("🗑️ Wyczyść historię"):
+            st.session_state["reports_history"] = []
+            st.rerun()
+    else:
+        st.caption("Brak zapisanych badań w obecnej sesji.")
