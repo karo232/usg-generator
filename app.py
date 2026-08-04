@@ -146,12 +146,16 @@ def add_to_history(report_text):
 
 def get_rodne_text(plec_wybor):
     p = str(plec_wybor).lower()
-    if "niekastrowany" in p: return "Gruczoł krokowy niepowiększony, wielkości ok. ... cm x ... cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia."
-    elif "samiec kastrowany" in p: return "Gruczoł krokowy obkurczony, hipoechogenny, bez zmian w budowie, typowy obraz pokastracyjny."
-    elif "cała" in p: return "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
-    else: return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
+    if "niekastrowany" in p: 
+        return "Gruczoł krokowy niepowiększony, wielkości ok. 2,6 cm x 2,5 cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia. Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie."
+    elif "samiec kastrowany" in p: 
+        return "Gruczoł krokowy obkurczony, zanikowy, wielkości ok. 1 cm x 0,7 cm, miąższ hipoechogenny, jednorodny, bez zmian w budowie."
+    elif "cała" in p: 
+        return "Macica niepowiększona, na wysokości rogów śr. do ok. 4,6 mm, na wysokości szyjki macicy do ok. 6,3 mm, na wysokości trzonu narządu do ok. 5 mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, lewy wielkości ok. 8 mm x 5 mm, prawy ok. 9 mm x 5,5 mm, normoechogenne, bez uchwytnych zmian guzowatych, bez uchwytnych zmian w budowie."
+    else: 
+        return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
-# BAZA SZABLONÓW DLA PSA I KOTA (Dokładnie wg wytycznych)
+# BAZA SZABLONÓW DLA PSA I KOTA
 def get_templates(gatunek):
     if gatunek == "Kot":
         return {
@@ -195,7 +199,6 @@ with st.sidebar:
             label_visibility="collapsed"
         )
         
-    # Dynamiczna zmiana nazewnictwa dla Psa / Kota
     plec_opcje = ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"] if gatunek == "Pies" else ["Kotka (kastrowana / kikut)", "Kotka (cała)", "Kocur (samiec niekastrowany)", "Kocur (samiec kastrowany)"]
     
     with st.container(border=True):
@@ -337,7 +340,6 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
             dim_trzustka = st.text_input("Trzustka gr. (mm)", placeholder="np. 8")
             dim_pecherzyk = st.text_input("Pęch. żółciowy ściana (mm)", placeholder="np. 1.1")
 
-    # Wypełnianie wymiarów (Domyślne jeśli puste)
     gat = st.session_state["gatunek_pacjenta"]
     v_pech = dim_pecherz.strip() if dim_pecherz.strip() else "1,1"
     v_nl = dim_nerka_l.strip()
@@ -395,7 +397,6 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
             trzustka_pat = st.text_area("Trzustka - edycja", key='trzustka_pat', height=68, label_visibility="collapsed")
             plyn_pat = st.text_area("Płyn - edycja", key='plyn_pat', height=68, label_visibility="collapsed")
 
-    # Budowanie sekcji z zachowaniem domyślnych wymiarów z szablonu
     txt_pech = f"Pęcherz moczowy {pecherz_pat}. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle." if pecherz_pat else szablony['pecherz'].format(pech=v_pech)
     txt_ner = f"Nerki prawidłowego kształtu, {v_nerki}, {nerki_pat}. Torebka narządu gładka, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie." if nerki_pat else szablony['nerki'].format(nerki=v_nerki)
     txt_spl = f"Śledziona {spleen_pat}, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona." if spleen_pat else szablony['sledziona'].format(spl=v_spl)
@@ -490,6 +491,7 @@ elif tryb == "📝 TRYB 3: Wybór Zmian":
     if st.button("💾 Zapisz ten opis do historii", key="save_btn_tab3"):
         add_to_history(st.session_state.get("editable_report_area_3", mode3_final_report))
         st.success("Zapisano badanie do paska bocznego!")
+
 
 # ==========================================
 # SIDEBAR DOLNY: HISTORIA BADAŃ
