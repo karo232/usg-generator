@@ -22,6 +22,7 @@ if "editable_report_area" not in st.session_state: st.session_state["editable_re
 if "reports_history" not in st.session_state: st.session_state["reports_history"] = []
 if "gatunek_pacjenta" not in st.session_state: st.session_state["gatunek_pacjenta"] = "Pies"
 if "plec_pacjenta" not in st.session_state: st.session_state["plec_pacjenta"] = "Suka (kastrowana / kikut)"
+if "last_mode1_hash" not in st.session_state: st.session_state["last_mode1_hash"] = ""
 if "last_mode2_hash" not in st.session_state: st.session_state["last_mode2_hash"] = ""
 if "last_mode3_hash" not in st.session_state: st.session_state["last_mode3_hash"] = ""
 if "processed_audio_size" not in st.session_state: st.session_state["processed_audio_size"] = 0
@@ -155,7 +156,6 @@ def get_rodne_text(plec_wybor):
     else: 
         return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
-# BAZA SZABLONÓW DLA PSA I KOTA
 def get_templates(gatunek):
     if gatunek == "Kot":
         return {
@@ -213,8 +213,41 @@ with st.sidebar:
     with st.container(border=True):
         dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
+
 # Pobranie aktywnych szablonów narządów
 szablony = get_templates(st.session_state["gatunek_pacjenta"])
+g_akt = st.session_state["gatunek_pacjenta"]
+
+# GENEROWANIE DOMYŚLNEGO "ZDROWEGO" OPISU (DLA WSZYSTKICH TRYBÓW)
+def get_default_full_report():
+    def_pech = "1,1"
+    def_nerki = "około 3,2 cm x 1,7 cm"
+    def_spl = "1,4"
+    def_zol = "2,1" if g_akt == "Kot" else "2,9"
+    def_dwu = "2,8"
+    def_okr = "1,3"
+    def_trz = "6,5" if g_akt == "Kot" else "8"
+    def_pech_zol = "1" if g_akt == "Kot" else "1,1"
+
+    sections = [
+        szablony['pecherz'].format(pech=def_pech),
+        get_rodne_text(st.session_state["plec_pacjenta"]),
+        szablony['nerki'].format(nerki=def_nerki),
+        szablony['nadnercza'],
+        szablony['sledziona'].format(spl=def_spl),
+        szablony['zoladek'].format(zol=def_zol),
+        szablony['jelita'].format(dwu=def_dwu, okr=def_okr),
+        szablony['watroba'].format(pech_zol=def_pech_zol),
+        szablony['trzustka'].format(trz=def_trz),
+        szablony['wezly'],
+        szablony['plyn']
+    ]
+    if dodaj_tarczyce:
+        sections.append("TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych.")
+    
+    return "\n\n".join(sections)
+
+base_default_report = get_default_full_report()
 
 # ==========================================
 # WYBÓR TRYBU PRACY 
@@ -236,8 +269,13 @@ st.markdown("<br>", unsafe_allow_html=True)
 # TRYB 1: DYKTOWANIE Z PEŁNYM ŚCISŁYM SZABLONEM
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
-    st.subheader("Wypowiedz obserwacje, AI stworzy gotowy raport")
-    st.info("💡 Nagraj notatkę. AI wstawi wymiary i patologie do pełnych szablonów medycznych.")
+    st.subheader("Wypowiedz obserwacje, AI zaktualizuje prawidłowy raport")
+    st.caption("Poniżej znajduje się domyślny, zdrowy opis pacjenta. Podyktuj zmiany, a AI sprytnie nadpisze tylko te narządy, o których wspomnisz.")
+
+    # Automatyczne nadpisywanie okna tekstowego w Trybie 1, jeśli użytkownik zmieni gatunek/płeć
+    if base_default_report != st.session_state.get("last_mode1_hash", ""):
+        st.session_state["editable_report_area"] = base_default_report
+        st.session_state["last_mode1_hash"] = base_default_report
 
     audio_recorded = st.audio_input("Nagraj notatkę głosową USG", key="audio_input_widget")
 
