@@ -81,7 +81,7 @@ with st.sidebar:
 # WYBÓR TRYBU PRACY
 tryb = st.radio(
     "Wybierz tryb pracy:",
-    ["🎙️ TRYB 1: Dyktowanie swobodne (Bezpośrednio na stronie)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
+    ["🎙️ TRYB 1: Dyktowanie swobodne", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
     horizontal=True,
     key="tryb_pracy"
 )
@@ -91,39 +91,36 @@ st.markdown("---")
 # ==========================================
 # TRYB 1: DYKTOWANIE SWOBODNE
 # ==========================================
-if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Bezpośrednio na stronie)":
-    st.subheader("🎙️ Swobodne dyktowanie badania")
-    st.caption("Kliknij przycisk mikrofonu, zezwól przeglądarce na dostęp do mikrofonu i zacznij mówić po polsku. Po zakończeniu kliknij przycisk skopiowania.")
-
+if tryb == "🎙️ TRYB 1: Dyktowanie swobodne":
+    st.subheader("🎙️ Swobodne dyktowanie badania po polsku")
+    
+    # Komponent dyktowania mowy Web Speech API
     speech_html = """
     <!DOCTYPE html>
     <html>
     <head>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background-color: transparent; }
-        .box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
-        .btn-mic { background-color: #0d5c58; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
+        .box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 15px; }
+        .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+        .btn-mic { background-color: #0d5c58; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
         .btn-mic.active { background-color: #dc2626; animation: blink 1.2s infinite; }
         .btn-copy { background-color: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
-        .btn-copy:hover { background-color: #e2e8f0; }
         .btn-clear { background-color: #fff; color: #64748b; border: 1px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; font-weight: 500; cursor: pointer; font-size: 14px; }
-        .btn-clear:hover { background-color: #f8fafc; color: #0f172a; }
-        .info { font-size: 13px; color: #64748b; font-weight: 500; }
-        textarea { width: 100%; height: 230px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-size: 15px; line-height: 1.5; font-family: inherit; resize: vertical; outline: none; }
-        textarea:focus { border-color: #0d5c58; box-shadow: 0 0 0 2px rgba(13, 92, 88, 0.2); }
+        .info { font-size: 13px; color: #64748b; font-weight: 600; }
+        textarea { width: 100%; height: 200px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-size: 15px; line-height: 1.5; font-family: inherit; resize: vertical; outline: none; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
     </head>
     <body>
     <div class="box">
         <div class="controls">
-            <button id="micBtn" class="btn-mic" onclick="toggleSpeech()">🎙️ Rozpocznij dyktowanie</button>
-            <button class="btn-copy" onclick="copyResult()">📋 Skopiuj cały opis</button>
+            <button id="micBtn" class="btn-mic" onclick="toggleSpeech()">🎙️ Włącz Mikrofon i Mów</button>
+            <button class="btn-copy" onclick="copyResult()">📋 Kopiuj Gotowy Opis</button>
             <button class="btn-clear" onclick="clearText()">🗑️ Wyczyść</button>
-            <span id="status" class="info">Gotowy do pracy</span>
+            <span id="status" class="info">Gotowy</span>
         </div>
-        <textarea id="txtArea" placeholder="Naciśnij 'Rozpocznij dyktowanie' i podyktuj opis USG po polsku..."></textarea>
+        <textarea id="txtArea" placeholder="Kliknij 'Włącz Mikrofon i Mów', odczekaj chwilę i zacznij dyktować opis po polsku..."></textarea>
     </div>
 
     <script>
@@ -133,35 +130,50 @@ if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Bezpośrednio na stronie)":
         var micBtn = document.getElementById('micBtn');
         var status = document.getElementById('status');
 
-        if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-            var SpeechRecognition = window.SpeechRecognition || webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = 'pl-PL';
+        function initSpeech() {
+            var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                status.innerText = '⚠️ Przeglądarka nie obsługuje mowy. Użyj Google Chrome lub MS Edge.';
+                status.style.color = '#dc2626';
+                return null;
+            }
+            var rec = new SpeechRecognition();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.lang = 'pl-PL';
 
-            recognition.onstart = function() {
+            rec.onstart = function() {
                 isListening = true;
                 micBtn.classList.add('active');
-                micBtn.innerText = '⏹️ Zakończ dyktowanie';
-                status.innerText = '🔴 Nagrywanie... Mów do mikrofonu';
+                micBtn.innerText = '⏹️ Zatrzymaj nagrywanie';
+                status.innerText = '🔴 Nagrywam... Mów teraz!';
                 status.style.color = '#dc2626';
             };
 
-            recognition.onerror = function(e) {
-                status.innerText = '⚠️ Błąd mikrofonu: ' + e.error;
-                status.style.color = '#dc2626';
-            };
-
-            recognition.onend = function() {
+            rec.onerror = function(e) {
                 isListening = false;
                 micBtn.classList.remove('active');
-                micBtn.innerText = '🎙️ Rozpocznij dyktowanie';
-                status.innerText = '⚪ Dyktowanie zakończone';
-                status.style.color = '#64748b';
+                micBtn.innerText = '🎙️ Włącz Mikrofon i Mów';
+                if (e.error === 'not-allowed') {
+                    status.innerText = '⚠️ Mikrofon zablokowany! Kliknij kłódkę 🔒 przy adresie URL strony i wybierz Zezwalaj.';
+                } else {
+                    status.innerText = '⚠️ Błąd: ' + e.error;
+                }
+                status.style.color = '#dc2626';
             };
 
-            recognition.onresult = function(event) {
+            rec.onend = function() {
+                if (isListening) {
+                    try { rec.start(); } catch(err) {}
+                } else {
+                    micBtn.classList.remove('active');
+                    micBtn.innerText = '🎙️ Włącz Mikrofon i Mów';
+                    status.innerText = '⚪ Nagrywanie zatrzymane';
+                    status.style.color = '#64748b';
+                }
+            };
+
+            rec.onresult = function(event) {
                 var finalTxt = '';
                 for (var i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
@@ -172,29 +184,41 @@ if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Bezpośrednio na stronie)":
                     txtArea.value += finalTxt;
                 }
             };
-        } else {
-            status.innerText = '⚠️ Otwórz stronę w Google Chrome lub MS Edge, aby dyktować.';
-            status.style.color = '#dc2626';
+            return rec;
         }
 
+        recognition = initSpeech();
+
         function toggleSpeech() {
+            if (!recognition) recognition = initSpeech();
+            if (!recognition) return;
+
             if (isListening) {
+                isListening = false;
                 recognition.stop();
             } else {
-                recognition.start();
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function(stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    recognition.start();
+                })
+                .catch(function(err) {
+                    status.innerText = '⚠️ Brak dostępu do mikrofonu! Sprawdź ustawienia prywatności w przeglądarce.';
+                    status.style.color = '#dc2626';
+                });
             }
         }
 
         function copyResult() {
             txtArea.select();
             document.execCommand('copy');
-            status.innerText = '✅ Skopiowano opis do schowka!';
+            status.innerText = '✅ Skopiowano do schowka!';
             status.style.color = '#16a34a';
         }
 
         function clearText() {
             txtArea.value = '';
-            status.innerText = 'Wyczyszczono pole tekstowe';
+            status.innerText = 'Wyczyszczono';
             status.style.color = '#64748b';
         }
     </script>
@@ -202,7 +226,8 @@ if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Bezpośrednio na stronie)":
     </html>
     """
     
-    components.html(speech_html, height=360)
+    # Włączamy pozwolenie na mikrofon bezpośrednio w ramce (iframe) Streamlit
+    components.html(speech_html, height=310)
 
 # ==========================================
 # TRYB 2: TABELA WYMIARÓW + SZYBKIE PATOLOGIE
