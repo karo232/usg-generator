@@ -1,3 +1,2 @@
 streamlit
-pyngrok
-streamlit-mic-recorder
+st-audiorec
