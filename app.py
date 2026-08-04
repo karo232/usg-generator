@@ -15,6 +15,12 @@ st.set_page_config(
     page_icon="🩺"
 )
 
+# === INICJALIZACJA SESSION STATE ===
+if "transcribed_text" not in st.session_state:
+    st.session_state["transcribed_text"] = ""
+if "last_audio" not in st.session_state:
+    st.session_state["last_audio"] = None
+
 # === ODCZYT KLUCZA Z SECRETS ===
 api_key = None
 if "OPENAI_API_KEY" in st.secrets:
@@ -114,47 +120,54 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
     st.subheader("🎙️ Swobodne dyktowanie badania z transkrypcją AI")
     st.caption("Kliknij ikonę mikrofonu, nagraj mowę i zatrzymaj nagrywanie. Sztuczna inteligencja zamieni słowa na tekst po polsku.")
 
-    if 'transcribed_text' not in st.session_state:
-        st.session_state['transcribed_text'] = ""
+    # Widget mikrofonu z unikalnym key
+    audio_recorded = st.audio_input("Nagraj notatkę głosową USG", key="audio_recorder_input")
 
-    # Rejestrator dźwięku
-    audio_recorded = st.audio_input("Nagraj notatkę głosową USG")
-
+    # Sprawdzanie czy pojawiło się NOWE nagranie (weryfikacja po bajtach)
     if audio_recorded is not None:
-        if client is not None:
-            with st.spinner("🧠 Transkrypcja nagrania..."):
-                try:
-                    # Zapis nagrania z mikrofonu do pliku tymczasowego
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-                        tmp_file.write(audio_recorded.getvalue())
-                        tmp_path = tmp_file.name
+        audio_bytes = audio_recorded.getvalue()
+        
+        if audio_bytes != st.session_state["last_audio"]:
+            if client is not None:
+                with st.spinner("🧠 Sztuczna inteligencja przepisuje mowę na tekst..."):
+                    try:
+                        # Zapamiętaj bajty tego nagrania
+                        st.session_state["last_audio"] = audio_bytes
 
-                    # Wysyłka oryginalnego pliku audio do OpenAI Whisper
-                    with open(tmp_path, "rb") as audio_file:
-                        transcript = client.audio.transcriptions.create(
-                            model="whisper-1",
-                            file=audio_file,
-                            language="pl"
-                        )
-                    
-                    # Nadpisanie stanu tekstem rozpoznanym przez Whisper AI
-                    st.session_state['transcribed_text'] = transcript.text
-                    os.remove(tmp_path)
-                except Exception as e:
-                    st.error(f"❌ Błąd z serwera OpenAI podczas transkrypcji: {e}")
-        else:
-            st.error("⚠️ Brak połączenia z OpenAI API. Sprawdź klucz w Secrets.")
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+                            tmp_file.write(audio_bytes)
+                            tmp_path = tmp_file.name
+
+                        with open(tmp_path, "rb") as audio_file:
+                            transcript = client.audio.transcriptions.create(
+                                model="whisper-1",
+                                file=audio_file,
+                                language="pl"
+                            )
+                        
+                        # Nadpisujemy session_state zsynchronizowany z text_area
+                        st.session_state["transcribed_text"] = transcript.text
+                        os.remove(tmp_path)
+                        
+                        # Wymuszenie ponownego wyrenderowania strony z nową zawartością
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"❌ Błąd z serwera OpenAI podczas transkrypcji: {e}")
+            else:
+                st.error("⚠️ Problem z połączeniem z OpenAI API. Sprawdź klucz w Secrets.")
 
     col1, col2 = st.columns([1, 5])
     with col1:
         if st.button("🗑️ Wyczyść tekst"):
-            st.session_state['transcribed_text'] = ""
+            st.session_state["transcribed_text"] = ""
+            st.session_state["last_audio"] = None
             st.rerun()
 
-    # Pole edycji opisu
+    # Pole edycji opisu — UWAGA: Używa WYŁĄCZNIE key="transcribed_text" (bez parametry value=!)
     podyktowany_tekst = st.text_area(
         "Wynik transkrypcji (możesz tutaj edytować tekst):",
-        value=st.session_state['transcribed_text'],
+        key="transcribed_text",
         placeholder="Tutaj pojawi się rozpoznany tekst...",
         height=200
     )
