@@ -1,4 +1,7 @@
 import streamlit as st
+import tempfile
+import os
+from openai import OpenAI
 
 # 1. Konfiguracja strony
 st.set_page_config(
@@ -6,6 +9,11 @@ st.set_page_config(
     layout="wide", 
     page_icon="🩺"
 )
+
+# Inicjalizacja klienta OpenAI z Secrets
+client = None
+if "OPENAI_API_KEY" in st.secrets:
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # 2. Stylizacja CSS nawiązująca do marki usgvetscans.pl
 st.markdown("""
@@ -77,10 +85,10 @@ with st.sidebar:
     )
     dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
-# WYBÓR TRYBY PRACY NA SAMEJ GÓRZE
+# WYBÓR TRYBU PRACY NA SAMEJ GÓRZE
 tryb = st.radio(
     "Wybierz tryb pracy:",
-    ["🎙️ TRYB 1: Dyktowanie swobodne", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
+    ["🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
     horizontal=True,
     key="tryb_pracy"
 )
@@ -88,33 +96,55 @@ tryb = st.radio(
 st.markdown("---")
 
 # ==========================================
-# TRYB 1: DYKTOWANIE SWOBODNE
+# TRYB 1: DYKTOWANIE Z TRANSKRYPCJĄ AI
 # ==========================================
-if tryb == "🎙️ TRYB 1: Dyktowanie swobodne":
-    st.subheader("🎙️ Swobodne dyktowanie badania")
-    
-    col_a1, col_a2 = st.columns([1, 2])
-    
-    with col_a1:
-        st.markdown("**1. Rejestrator audio z mikrofonu:**")
-        # Oficjalny natywny komponent Streamlit do rejestrowania dźwięku
-        audio_recorded = st.audio_input("Nagraj notatkę głosową USG")
+if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
+    st.subheader("🎙️ Swobodne dyktowanie badania z transkrypcją AI")
+    st.caption("Nagraj mowę za pomocą wbudowanego mikrofonu poniżej. Sztuczna inteligencja automatycznie zamieni nagranie na tekst.")
 
-    with col_a2:
-        st.markdown("**2. Treść opisu:**")
-        st.caption("Kliknij poniżej i podyktuj badanie głosem lub odsłuchaj nagrane wyżej audio i wpisz treść:")
-        
-        podyktowany_tekst = st.text_area(
-            "Wpisz/podyktuj opis badania:",
-            placeholder="np. Pęcherz moczowy miernie wypełniony ściana 2.5 mm, nerka lewa 4.5x2.8 cm...",
-            height=180,
-            label_visibility="collapsed"
-        )
+    if 'transcribed_text' not in st.session_state:
+        st.session_state['transcribed_text'] = ""
+
+    # Rejestrator dźwięku
+    audio_recorded = st.audio_input("Nagraj notatkę głosową USG")
+
+    if audio_recorded is not None:
+        if client is not None:
+            with st.spinner("🧠 Sztuczna inteligencja przepisuje nagranie na tekst..."):
+                try:
+                    # Zapis pliku tymczasowego
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+                        tmp_file.write(audio_recorded.read())
+                        tmp_path = tmp_file.name
+
+                    # Transkrypcja przez model OpenAI Whisper
+                    with open(tmp_path, "rb") as audio_file:
+                        transcript = client.audio.transcriptions.create(
+                            model="whisper-1",
+                            file=audio_file,
+                            language="pl"
+                        )
+                    
+                    st.session_state['transcribed_text'] = transcript.text
+                    os.remove(tmp_path)
+                    st.success("✅ Transkrypcja gotowa!")
+                except Exception as e:
+                    st.error(f"Błąd transkrypcji AI: {e}")
+        else:
+            st.warning("⚠️ Brak skonfigurowanego klucza OPENAI_API_KEY w Secrets w panelu Streamlit Cloud.")
+
+    # Pole edycji opisu
+    podyktowany_tekst = st.text_area(
+        "Treść opisu (możesz edytować tekst ręcznie):",
+        value=st.session_state['transcribed_text'],
+        placeholder="Nagraj głos powyżej, a tekst pojawi się tutaj...",
+        height=200
+    )
 
     if podyktowany_tekst:
         final_report_text = f"OPIS BADANIA USG:\n\n{podyktowany_tekst}"
     else:
-        final_report_text = "Czekam na wpisanie lub podyktowanie treści..."
+        final_report_text = "Czekam na nagranie głosu..."
 
     st.markdown("---")
     st.subheader("📋 Wygenerowany Opis USG:")
