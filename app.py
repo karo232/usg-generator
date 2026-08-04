@@ -92,142 +92,130 @@ st.markdown("---")
 # TRYB 1: DYKTOWANIE SWOBODNE
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie swobodne":
-    st.subheader("🎙️ Swobodne dyktowanie badania po polsku")
-    
-    # Komponent dyktowania mowy Web Speech API
+    st.subheader("🎙️ Dyktowanie opisu badania")
+    st.caption("Kliknij przycisk, aby rozpocząć dyktowanie. Upewnij się, że mówisz wyraźnie po polsku.")
+
     speech_html = """
     <!DOCTYPE html>
     <html>
     <head>
+    <meta charset="utf-8">
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
-        .box { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 15px; }
-        .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
-        .btn-mic { background-color: #0d5c58; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
-        .btn-mic.active { background-color: #dc2626; animation: blink 1.2s infinite; }
+        body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background: transparent; }
+        .card { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; }
+        .bar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+        .btn-start { background-color: #0d5c58; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
+        .btn-stop { background-color: #dc2626; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; display: none; }
         .btn-copy { background-color: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
         .btn-clear { background-color: #fff; color: #64748b; border: 1px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; font-weight: 500; cursor: pointer; font-size: 14px; }
-        .info { font-size: 13px; color: #64748b; font-weight: 600; }
-        textarea { width: 100%; height: 200px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-size: 15px; line-height: 1.5; font-family: inherit; resize: vertical; outline: none; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .status { font-size: 13px; font-weight: 600; color: #64748b; }
+        textarea { width: 100%; height: 220px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-size: 15px; line-height: 1.5; font-family: inherit; resize: vertical; outline: none; }
+        textarea:focus { border-color: #0d5c58; }
     </style>
     </head>
     <body>
-    <div class="box">
-        <div class="controls">
-            <button id="micBtn" class="btn-mic" onclick="toggleSpeech()">🎙️ Włącz Mikrofon i Mów</button>
-            <button class="btn-copy" onclick="copyResult()">📋 Kopiuj Gotowy Opis</button>
-            <button class="btn-clear" onclick="clearText()">🗑️ Wyczyść</button>
-            <span id="status" class="info">Gotowy</span>
+    <div class="card">
+        <div class="bar">
+            <button id="startBtn" class="btn-start" onclick="startRec()">🎙️ Zacznij mówić</button>
+            <button id="stopBtn" class="btn-stop" onclick="stopRec()">⏹️ Zakończ dyktowanie</button>
+            <button class="btn-copy" onclick="copyTxt()">📋 Skopiuj opis</button>
+            <button class="btn-clear" onclick="clearTxt()">🗑️ Wyczyść</button>
+            <span id="statusLabel" class="status">Gotowy</span>
         </div>
-        <textarea id="txtArea" placeholder="Kliknij 'Włącz Mikrofon i Mów', odczekaj chwilę i zacznij dyktować opis po polsku..."></textarea>
+        <textarea id="outputBox" placeholder="Naciśnij 'Zacznij mówić' i dyktuj treść opisu USG..."></textarea>
     </div>
 
     <script>
-        var recognition;
-        var isListening = false;
-        var txtArea = document.getElementById('txtArea');
-        var micBtn = document.getElementById('micBtn');
-        var status = document.getElementById('status');
+        var recognition = null;
+        var outputBox = document.getElementById('outputBox');
+        var startBtn = document.getElementById('startBtn');
+        var stopBtn = document.getElementById('stopBtn');
+        var statusLabel = document.getElementById('statusLabel');
 
-        function initSpeech() {
+        function setupSpeech() {
             var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
-                status.innerText = '⚠️ Przeglądarka nie obsługuje mowy. Użyj Google Chrome lub MS Edge.';
-                status.style.color = '#dc2626';
+                statusLabel.innerText = "⚠️ Użyj Google Chrome lub Microsoft Edge.";
+                statusLabel.style.color = "#dc2626";
                 return null;
             }
             var rec = new SpeechRecognition();
             rec.continuous = true;
-            rec.interimResults = true;
+            rec.interimResults = false;
             rec.lang = 'pl-PL';
 
             rec.onstart = function() {
-                isListening = true;
-                micBtn.classList.add('active');
-                micBtn.innerText = '⏹️ Zatrzymaj nagrywanie';
-                status.innerText = '🔴 Nagrywam... Mów teraz!';
-                status.style.color = '#dc2626';
-            };
-
-            rec.onerror = function(e) {
-                isListening = false;
-                micBtn.classList.remove('active');
-                micBtn.innerText = '🎙️ Włącz Mikrofon i Mów';
-                if (e.error === 'not-allowed') {
-                    status.innerText = '⚠️ Mikrofon zablokowany! Kliknij kłódkę 🔒 przy adresie URL strony i wybierz Zezwalaj.';
-                } else {
-                    status.innerText = '⚠️ Błąd: ' + e.error;
-                }
-                status.style.color = '#dc2626';
-            };
-
-            rec.onend = function() {
-                if (isListening) {
-                    try { rec.start(); } catch(err) {}
-                } else {
-                    micBtn.classList.remove('active');
-                    micBtn.innerText = '🎙️ Włącz Mikrofon i Mów';
-                    status.innerText = '⚪ Nagrywanie zatrzymane';
-                    status.style.color = '#64748b';
-                }
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-block';
+                statusLabel.innerText = "🔴 Słucham... Mów teraz";
+                statusLabel.style.color = "#dc2626";
             };
 
             rec.onresult = function(event) {
-                var finalTxt = '';
                 for (var i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
-                        finalTxt += event.results[i][0].transcript + ' ';
+                        outputBox.value += event.results[i][0].transcript + ' ';
                     }
                 }
-                if (finalTxt.length > 0) {
-                    txtArea.value += finalTxt;
-                }
             };
+
+            rec.onerror = function(e) {
+                statusLabel.innerText = "⚠️ Błąd: " + e.error;
+                statusLabel.style.color = "#dc2626";
+                resetBtns();
+            };
+
+            rec.onend = function() {
+                resetBtns();
+            };
+
             return rec;
         }
 
-        recognition = initSpeech();
+        function resetBtns() {
+            startBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'none';
+            statusLabel.innerText = "⚪ Zakończono dyktowanie";
+            statusLabel.style.color = "#64748b";
+        }
 
-        function toggleSpeech() {
-            if (!recognition) recognition = initSpeech();
-            if (!recognition) return;
-
-            if (isListening) {
-                isListening = false;
-                recognition.stop();
-            } else {
-                navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(function(stream) {
-                    stream.getTracks().forEach(track => track.stop());
+        function startRec() {
+            if (!recognition) recognition = setupSpeech();
+            if (recognition) {
+                try {
                     recognition.start();
-                })
-                .catch(function(err) {
-                    status.innerText = '⚠️ Brak dostępu do mikrofonu! Sprawdź ustawienia prywatności w przeglądarce.';
-                    status.style.color = '#dc2626';
-                });
+                } catch(e) {
+                    recognition.stop();
+                    setTimeout(function(){ recognition.start(); }, 200);
+                }
             }
         }
 
-        function copyResult() {
-            txtArea.select();
-            document.execCommand('copy');
-            status.innerText = '✅ Skopiowano do schowka!';
-            status.style.color = '#16a34a';
+        function stopRec() {
+            if (recognition) {
+                recognition.stop();
+            }
+            resetBtns();
         }
 
-        function clearText() {
-            txtArea.value = '';
-            status.innerText = 'Wyczyszczono';
-            status.style.color = '#64748b';
+        function copyTxt() {
+            outputBox.select();
+            document.execCommand('copy');
+            statusLabel.innerText = "✅ Skopiowano do schowka!";
+            statusLabel.style.color = "#16a34a";
+        }
+
+        function clearTxt() {
+            outputBox.value = '';
+            statusLabel.innerText = "Wyczyszczono";
+            statusLabel.style.color = "#64748b";
         }
     </script>
     </body>
     </html>
     """
     
-    # Włączamy pozwolenie na mikrofon bezpośrednio w ramce (iframe) Streamlit
-    components.html(speech_html, height=310)
+    components.html(speech_html, height=330)
 
 # ==========================================
 # TRYB 2: TABELA WYMIARÓW + SZYBKIE PATOLOGIE
