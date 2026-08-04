@@ -14,8 +14,10 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# === PEWNE I BEZPIECZNE POBIERANIE KLUCZA ===
+# === PRECYZYJNE POBIERANIE I DIAGNOSTYKA KLUCZA ===
 api_key = None
+init_error = None
+
 if "OPENAI_API_KEY" in st.secrets:
     api_key = str(st.secrets["OPENAI_API_KEY"]).strip().strip('"').strip("'")
 elif os.environ.get("OPENAI_API_KEY"):
@@ -25,8 +27,11 @@ client = None
 if HAS_OPENAI and api_key:
     try:
         client = OpenAI(api_key=api_key)
-    except Exception:
+    except Exception as e:
         client = None
+        init_error = str(e)
+elif not api_key:
+    init_error = "Nie odnaleziono zmiennej OPENAI_API_KEY w Secrets."
 
 # --- STYLIZACJA CSS ---
 st.markdown("""
@@ -105,9 +110,9 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
                     os.remove(tmp_path)
                     st.success("✅ Transkrypcja gotowa!")
                 except Exception as e:
-                    st.error(f"❌ Błąd OpenAI API: {e}")
+                    st.error(f"❌ Błąd z serwera OpenAI podczas transkrypcji: {e}")
         else:
-            st.error("⚠️ Brak poprawnego klucza OpenAI w Secrets lub problem z połączeniem.")
+            st.error(f"⚠️ Problem z kluczem OpenAI: {init_error}")
 
     podyktowany_tekst = st.text_area(
         "Wynik transkrypcji (możesz tutaj edytować tekst):",
