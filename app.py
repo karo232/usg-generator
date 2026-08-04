@@ -1,13 +1,16 @@
+import subprocess
+import sys
+
+# Automatyczna wymuszona instalacja pakietu openai bezpośrednio z poziomu kodu
+try:
+    from openai import OpenAI
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "openai"])
+    from openai import OpenAI
+
 import streamlit as st
 import tempfile
 import os
-
-# Bezpieczny import biblioteki OpenAI (zapobiega wywalaniu aplikacji)
-try:
-    from openai import OpenAI
-    HAS_OPENAI = True
-except ImportError:
-    HAS_OPENAI = False
 
 # 1. Konfiguracja strony
 st.set_page_config(
@@ -18,7 +21,7 @@ st.set_page_config(
 
 # Inicjalizacja klienta OpenAI z Secrets
 client = None
-if HAS_OPENAI and "OPENAI_API_KEY" in st.secrets:
+if "OPENAI_API_KEY" in st.secrets:
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # 2. Stylizacja CSS nawiązująca do marki usgvetscans.pl
@@ -134,8 +137,6 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
                     st.success("✅ Transkrypcja gotowa!")
                 except Exception as e:
                     st.error(f"Błąd transkrypcji AI: {e}")
-        elif not HAS_OPENAI:
-            st.warning("⏳ Trwa instalacja modułu OpenAI na serwerze... Odśwież stronę za 1-2 minuty.")
         else:
             st.warning("⚠️ Brak skonfigurowanego klucza OPENAI_API_KEY w Secrets w panelu Streamlit Cloud.")
 
