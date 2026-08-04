@@ -81,11 +81,12 @@ def add_to_history(report_text):
 
 # GŁÓWNA FUNKCJA DOPASOWUJĄCA UKŁAD ROZRODCZY - W 100% ZGODNA Z TWOIM WZORCEM
 def get_rodne_text(plec_wybor):
-    if "samiec niekastrowany" in plec_wybor:
+    p = str(plec_wybor).lower()
+    if "niekastrowany" in p:
         return "Gruczoł krokowy niepowiększony, wielkości ok. ... cm x ... cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia."
-    elif "samiec kastrowany" in plec_wybor:
+    elif "samiec kastrowany" in p:
         return "Gruczoł krokowy obkurczony, hipoechogenny, bez zmian w budowie, typowy obraz pokastracyjny."
-    elif "cała" in plec_wybor:
+    elif "cała" in p:
         return "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
     else: # Kikut
         return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
@@ -103,7 +104,8 @@ with st.sidebar:
             "Pies (samiec niekastrowany)", 
             "Pies (samiec kastrowany)"
         ],
-        key="plec_pacjenta"
+        key="plec_pacjenta",
+        on_change=lambda: st.rerun()
     )
     dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
@@ -137,7 +139,7 @@ st.markdown("---")
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + Ścisły Szablon Medyczny)":
     st.subheader("🎙️ Swobodne dyktowanie badania z generacją wg Ścisłego Wzorca Medycznego")
-    st.caption("Podyktuj obserwacje. AI wstawi je w dokładnie zdefiniowane, pełne akapity szablonowe.")
+    st.caption("Podyktuj obserwacje. AI wstawi je w dokładnie zdefiniowane, pełne akapity szablonowe i automatycznie zapisze w historii.")
 
     audio_recorded = st.audio_input("Nagraj notatkę głosową USG", key="audio_input_widget")
 
@@ -244,7 +246,7 @@ ZASADY WYLOTOWE:
                         
                         corrected_text = response.choices[0].message.content.strip()
                         st.session_state["editable_report_area"] = corrected_text
-                        add_to_history(corrected_text)
+                        add_to_history(corrected_text)  # Automatyczny zapis w historii dla Trybu 1
                         st.success("✅ Generowanie wzorcowego raportu zakończone!")
 
                     except Exception as e:
@@ -417,8 +419,8 @@ else:
 
     mode2_final_report = "\n\n".join(report_sections)
     
-    # Inteligentne nadpisywanie tekst boxu, gdy zmieniono parametry w tabeli lub płeć
-    if mode2_final_report != st.session_state["last_mode2_hash"]:
+    # Inteligentne nadpisywanie tekst boxu przy zmianie płci/danych w tabeli
+    if mode2_final_report != st.session_state.get("last_mode2_hash", ""):
         st.session_state["editable_report_area"] = mode2_final_report
         st.session_state["last_mode2_hash"] = mode2_final_report
 
