@@ -161,7 +161,7 @@ def get_templates(gatunek):
         return {
             "pecherz": "Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. {pech} mm, prawidłowej budowy, bez cech zapalenia ostrego, mocz aechogenny, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle.",
             "nerki": "Nerki prawidłowego kształtu i wielkości {nerki}, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie.",
-            "nadnercza": "Nadnercza prawidłowej wielkości i kształtu, grubości około 4,3 mm, bez uchwytnych zmian w budowie.",
+            "nadnercza": "Nadnercza prawidłowej wielkości i kształtu, grubości około {nadn} mm, bez uchwytnych zmian w budowie.",
             "sledziona": "Śledziona prawidłowej wielkości, grubości około {spl} cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona.",
             "zoladek": "Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości, około 2,2-4,4 mm, w trzonie ok. {zol} mm, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego.",
             "jelita": "Ściana dwunastnicy niepogrubiała, gr. ok. {dwu} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość płynnej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa. Światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka zachowana. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, gr. do ok. {okr} mm, okrężnica wypełniona uformowanymi masami kałowymi.",
@@ -174,7 +174,7 @@ def get_templates(gatunek):
         return {
             "pecherz": "Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. {pech} mm, prawidłowej budowy, bez cech zapalenia ostrego, mocz aechogenny, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle.",
             "nerki": "Nerki prawidłowego kształtu i wielkości {nerki}, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie.",
-            "nadnercza": "Nadnercza prawidłowej wielkości i kształtu, grubości około 4,3 mm, bez uchwytnych zmian w budowie.",
+            "nadnercza": "Nadnercza prawidłowej wielkości i kształtu, grubości około {nadn} mm, bez uchwytnych zmian w budowie.",
             "sledziona": "Śledziona prawidłowej wielkości, grubości około {spl} cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona.",
             "zoladek": "Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości, pomiędzy fałdami do około {zol} mm, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego.",
             "jelita": "Ściana dwunastnicy niepogrubiała, gr. ok. {dwu} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość płynnej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa. Światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka zachowana. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, gr. do ok. {okr} mm, okrężnica wypełniona uformowanymi masami kałowymi.",
@@ -219,9 +219,10 @@ szablony = get_templates(st.session_state["gatunek_pacjenta"])
 g_akt = st.session_state["gatunek_pacjenta"]
 
 # GENEROWANIE DOMYŚLNEGO "ZDROWEGO" OPISU (DLA WSZYSTKICH TRYBÓW)
-def get_default_full_report():
+def get_default_full_report(nadn_val="4,3"):
     def_pech = "1,1"
     def_nerki = "około 3,2 cm x 1,7 cm"
+    def_nadn = nadn_val
     def_spl = "1,4"
     def_zol = "2,1" if g_akt == "Kot" else "2,9"
     def_dwu = "2,8"
@@ -233,7 +234,7 @@ def get_default_full_report():
         szablony['pecherz'].format(pech=def_pech),
         get_rodne_text(st.session_state["plec_pacjenta"]),
         szablony['nerki'].format(nerki=def_nerki),
-        szablony['nadnercza'],
+        szablony['nadnercza'].format(nadn=def_nadn),
         szablony['sledziona'].format(spl=def_spl),
         szablony['zoladek'].format(zol=def_zol),
         szablony['jelita'].format(dwu=def_dwu, okr=def_okr),
@@ -272,7 +273,6 @@ if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
     st.subheader("Wypowiedz obserwacje, AI zaktualizuje prawidłowy raport")
     st.caption("Poniżej znajduje się domyślny, zdrowy opis pacjenta. Podyktuj zmiany, a AI sprytnie nadpisze tylko te narządy, o których wspomnisz.")
 
-    # Automatyczne nadpisywanie okna tekstowego w Trybie 1, jeśli użytkownik zmieni gatunek/płeć
     if base_default_report != st.session_state.get("last_mode1_hash", ""):
         st.session_state["editable_report_area"] = base_default_report
         st.session_state["last_mode1_hash"] = base_default_report
@@ -311,9 +311,9 @@ if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
                     with st.spinner("🩺 KROK 2/2: Generowanie pełnych akapitów opisu USG..."):
                         try:
                             sz_rozrodczy = get_rodne_text(st.session_state["plec_pacjenta"])
-                            # Podmiana zmiennych w szablonach na komendę dla AI
                             ai_pech = szablony['pecherz'].replace('{pech}', '[WYMIAR]')
                             ai_ner = szablony['nerki'].replace('{nerki}', 'około [DODAJ WYMIARY]')
+                            ai_nadn = szablony['nadnercza'].replace('{nadn}', '[WYMIAR]')
                             ai_spl = szablony['sledziona'].replace('{spl}', '[WYMIAR]')
                             ai_zol = szablony['zoladek'].replace('{zol}', '[WYMIAR]')
                             ai_jel = szablony['jelita'].replace('{dwu}', '[WYMIAR]').replace('{okr}', '[WYMIAR]')
@@ -328,7 +328,7 @@ KRYTYCZNA ZASADA PŁCI (Pacjent: {st.session_state["plec_pacjenta"]}): "{sz_rozr
 MATRYCE AKAPITÓW DLA POZOSTAŁYCH NARZĄDÓW:
 PĘCHERZ MOCZOWY: "{ai_pech}"
 NERKI: "{ai_ner}"
-NADNERCZA: "{szablony['nadnercza']}"
+NADNERCZA: "{ai_nadn}"
 ŚLEDZIONA: "{ai_spl}"
 ŻOŁĄDEK: "{ai_zol}"
 JELITA I DWUNASTNICA: "{ai_jel}"
@@ -375,6 +375,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         with tm2:
             dim_spleen = st.text_input("Śledziona gr. (cm)", placeholder="np. 1.4")
             dim_zoladek = st.text_input("Żołądek ściana (mm)", placeholder="np. 2.1")
+            dim_nadnercza = st.text_input("Nadnercza gr. (mm)", placeholder="np. 4.3")
         with tm3:
             dim_dwunastnica = st.text_input("Dwunastnica ściana (mm)", placeholder="np. 2.8")
             dim_okresnica = st.text_input("Okrężnica ściana (mm)", placeholder="np. 1.3")
@@ -391,6 +392,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     else:
         v_nerki = "około 3,2 cm x 1,7 cm"
         
+    v_nadn = dim_nadnercza.strip() if dim_nadnercza.strip() else "4,3"
     v_spl = dim_spleen.strip() if dim_spleen.strip() else "1,4"
     v_zol = dim_zoladek.strip() if dim_zoladek.strip() else ("2,1" if gat == "Kot" else "2,9")
     v_dwu = dim_dwunastnica.strip() if dim_dwunastnica.strip() else "2,8"
@@ -441,6 +443,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
 
     txt_pech = f"Pęcherz moczowy {pecherz_pat}. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle." if pecherz_pat else szablony['pecherz'].format(pech=v_pech)
     txt_ner = f"Nerki prawidłowego kształtu, {v_nerki}, {nerki_pat}. Torebka narządu gładka, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie." if nerki_pat else szablony['nerki'].format(nerki=v_nerki)
+    txt_nadn = szablony['nadnercza'].format(nadn=v_nadn)
     txt_spl = f"Śledziona {spleen_pat}, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona." if spleen_pat else szablony['sledziona'].format(spl=v_spl)
     txt_jel = f"{jelita_pat}. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, gr. do ok. {v_okr} mm, okrężnica wypełniona uformowanymi masami kałowymi." if jelita_pat else szablony['jelita'].format(dwu=v_dwu, okr=v_okr)
     txt_wat = f"Wątroba {watroba_pat}. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. do {v_pech_zol} mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie." if watroba_pat else szablony['watroba'].format(pech_zol=v_pech_zol)
@@ -451,7 +454,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         txt_pech, 
         get_rodne_text(st.session_state["plec_pacjenta"]), 
         txt_ner,
-        szablony['nadnercza'],
+        txt_nadn,
         txt_spl, 
         szablony['zoladek'].format(zol=v_zol), 
         txt_jel,
@@ -495,7 +498,7 @@ elif tryb == "📝 TRYB 3: Wybór Zmian":
         "Pęcherz moczowy": szablony['pecherz'].format(pech="1,1"),
         "Układ rozrodczy": get_rodne_text(st.session_state["plec_pacjenta"]),
         "Nerki": szablony['nerki'].format(nerki="około 3,2 cm x 1,7 cm"),
-        "Nadnercza": szablony['nadnercza'],
+        "Nadnercza": szablony['nadnercza'].format(nadn="4,3"),
         "Śledziona": szablony['sledziona'].format(spl="1,4"),
         "Żołądek": szablony['zoladek'].format(zol=("2,1" if gat == "Kot" else "2,9")),
         "Jelita i Dwunastnica": szablony['jelita'].format(dwu="2,8", okr="1,3"),
