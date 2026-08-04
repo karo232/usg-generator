@@ -72,7 +72,7 @@ with st.sidebar:
 
 tryb = st.radio(
     "Wybierz tryb pracy:",
-    ["🎙️ TRYB 1: Dyktowanie głosem (Whisper + GPT AI)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
+    ["🎙️ TRYB 1: Dyktowanie głosem (Whisper + Oficjalny Szablon)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
     horizontal=True,
     key="tryb_pracy"
 )
@@ -80,11 +80,11 @@ tryb = st.radio(
 st.markdown("---")
 
 # ==========================================
-# TRYB 1: DYKTOWANIE Z TRANSKRYPCJĄ I KOREKTĄ AI
+# TRYB 1: DYKTOWANIE Z OFICJALNYM SZYBKIM SZABLONEM AI
 # ==========================================
-if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + GPT AI)":
-    st.subheader("🎙️ Swobodne dyktowanie badania z korektą medyczną AI")
-    st.caption("Kliknij ikonę mikrofonu, podyktuj obserwacje i zatrzymaj nagrywanie.")
+if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + Oficjalny Szablon)":
+    st.subheader("🎙️ Swobodne dyktowanie badania z generacją wg Oficjalnego Wzorca")
+    st.caption("Podyktuj swoje obserwacje. AI automatycznie zamieni je na kompletny opis USG w dokładnie takim formacie, jaki stosujesz.")
 
     audio_recorded = st.audio_input("Nagraj notatkę głosową USG", key="audio_input_widget")
 
@@ -111,7 +111,7 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + GPT AI)":
                         prompt_vet = (
                             "Transkrypcja opisu badania USG weterynaryjnego u psa lub kota. "
                             "Słownictwo: wątroba, śledziona, nerki, trzustka, pęcherz moczowy, "
-                            "jelita, dwunastnica, żołądek, okrężnica, normoechogenny, hipoechogenny, aechogenny."
+                            "jelita, dwunastnica, żołądek, okrężnica, nadnercza, prostata, macica, jajniki."
                         )
                         res = client.audio.transcriptions.create(
                             model="whisper-1",
@@ -122,62 +122,101 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + GPT AI)":
                         raw_transcript = res.text.strip() if res.text else ""
 
                 except Exception as e:
-                    st.error(f"❌ Błąd transkrypcji Whisper: {e}")
+                    st.error(f"❌ Błąd transkrypcji: {e}")
                 finally:
                     if tmp_path and os.path.exists(tmp_path):
                         os.remove(tmp_path)
 
-            # --- PODGLĄD DIAGNOSTYCZNY ---
-            with st.expander("🔍 Podgląd diagnostyczny (DEBUG)", expanded=True):
-                st.write(f"**Odebrany tekst z Whisper:** `{repr(raw_transcript)}`")
-                st.write(f"**Długość znaków:** `{len(raw_transcript)}`")
-
-            # KROK 2: Wywoływany TYLKO jeśli Whisper wykrył realny tekst
+            # KROK 2: Generowanie raportu wg dokładnego Twojego wzorca
             if raw_transcript and len(raw_transcript) > 2:
-                with st.spinner("🩺 KROK 2/2: Korekta terminologii weterynaryjnej (GPT-4o-mini)..."):
+                with st.spinner("🩺 KROK 2/2: Formowanie oficjalnego opisu USG wg wzorca..."):
                     try:
-                        system_prompt = (
-                            "Jesteś profesjonalnym edytorem medycznym i asystentem lekarza weterynarii. "
-                            "Otrzymasz surowy tekst dyktowany przez lekarza podczas badania USG.\n\n"
-                            "ZASADY:\n"
-                            "1. Przekształć surowy tekst w poprawny, czysty opis medyczny USG po polsku.\n"
-                            "2. Popraw błędy ortograficzne i fonetyczne (np. 'a echogenny' -> 'aechogenny', 'pęcherz miernie' -> 'Pęcherz moczowy miernie wypełniony').\n"
-                            "3. Nigdy nie odpowiadaj jak czatbot (NIE pisz 'Przykro mi', 'Oto opis', 'Nie mogę pomóc').\n"
-                            "4. Zwracaj WYŁĄCZNIE sam gotowy tekst medyczny opisu badania."
-                        )
+                        system_prompt = f"""
+Jesteś systemem generowania raportów USG weterynaryjnego. Twoim zadaniem jest przekształcenie luźnej notatki lekarza w PEŁNY, PROFESJONALNY OPIS MEDYCZNY zachowujący dokładnie strukturę, frazy i format podany w poniższym wzorcu.
+
+DANE PACJENTA:
+- Płeć / stan: {plec}
+- Badanie tarczycy: {"TAK" if dodaj_tarczyce else "NIE"}
+
+OFICJALNY WZORIEC RAPORTU (Użyj tych dokładnych zdań dla narządów prawidłowych, a jeśli lekarz poda odchylenia/wymiary – dostosuj je merytorycznie wewnątrz struktury zdań):
+
+1. Pęcherz moczowy:
+"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. ... mm, prawidłowej budowy, bez cech zapalenia, mocz aechogenny, bez mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
+
+2. Układ rozrodczy / Prostata (dobierz odpowiednio do płci pacjenta [{plec}]):
+- Jeśli pies niekastrowany: "Gruczoł krokowy niepowiększony, wielkości ok. ... cm x ... cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia. Jądra w mosznie, prawidłowej wielkości i echogeniczności, miąższ jednorodny, bez zmian ogniskowych."
+- Jeśli pies kastrowany: "Gruczoł krokowy niepowiększony, fizjologicznie zmniejszony (stan po kastracji), miąższ jednorodny, bez cech zapalenia. Stan po orchidektomii – brak jąder w mosznie."
+- Jeśli suka cała: "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
+- Jeśli suka kastrowana / kikut: "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
+
+3. Nerki:
+"Nerki prawidłowego kształtu i wielkości około ... cm x ... cm, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
+
+4. Nadnercza:
+"Nadnercza prawidłowej wielkości i kształtu, grubości około ... mm, bez uchwytnych zmian w budowie."
+
+5. Śledziona:
+"Śledziona prawidłowej wielkości, grubości około ... cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
+
+6. Żołądek:
+"Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości około ...-... mm, w trzonie ok. ... mm, okolica odźwiernika bez zmian, ściana gr. ok. ... mm, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego."
+
+7. Jelita i Dwunastnica:
+"Ściana dwunastnicy niepogrubiała, ok. ... mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana. Światło nieposzerzone, w świetle niewielka ilość strawionej treści. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, ok. ... mm, okrężnica wypełniona uformowanymi masami kałowymi."
+
+8. Wątroba i Pęcherzyk żółciowy:
+"Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. ... mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
+
+9. Trzustka:
+"Trzustka prawidłowej wielkości i kształtu, gr. ok. ... mm w płacie prawym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony."
+
+10. Węzły chłonne:
+"Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie."
+
+11. Wolny płyn:
+"Brak wolnego płynu w jamie brzusznej."
+
+{( '12. Tarczyca:\n"TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych."' if dodaj_tarczyce else '' )}
+
+ZASADY:
+1. Rozwiń skróty myślowe lekarza do pełnych zdań z powyższego wzorca (jeśli narząd jest prawidłowy, wypisz pełen wzorcowy akapit).
+2. Jeśli lekarz podał konkretne wymiary lub patologie, uzupełnij je w odpowiednich miejscach zdań.
+3. Poszczególne narządy oddzielaj podwójną spacją / nową linią.
+4. Zwróć WYŁĄCZNIE gotowy tekst raportu, bez żadnych wstępów i komentarzy czatbota.
+"""
 
                         response = client.chat.completions.create(
                             model="gpt-4o-mini",
                             messages=[
                                 {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": f"Tekst dyktowany przez lekarza do korekty:\n{raw_transcript}"}
+                                {"role": "user", "content": f"Notatka lekarza:\n{raw_transcript}"}
                             ],
                             temperature=0.1
                         )
                         
                         corrected_text = response.choices[0].message.content.strip()
                         st.session_state["editable_report_area"] = corrected_text
-                        st.success("✅ Opis został przetworzony i skorygowany!")
+                        st.success("✅ Wygenerowano pełny raport wg Twojego wzorca!")
 
                     except Exception as e:
                         st.session_state["editable_report_area"] = raw_transcript
-                        st.warning(f"⚠️ Użyto surowej transkrypcji (błąd GPT): {e}")
+                        st.warning(f"⚠️ Błąd generatora: {e}")
             else:
-                st.warning("⚠️ Transkrypcja jest pusta lub niewyraźna. Nagraj dłuższą wypowiedź.")
+                st.warning("⚠️ Brak rozpoznanej mowy. Podyktuj wynik badania.")
         else:
-            st.error("⚠️ Brak aktywnego klienta OpenAI API. Sprawdź secrets.")
+            st.error("⚠️ Brak aktywnego klienta OpenAI API.")
 
     podyktowany_tekst = st.text_area(
-        "Wygenerowany i skorygowany opis (możesz tutaj dokonać własnych zmian):",
+        "Wygenerowany Raport USG (możesz edytować tekst poniżej):",
         key="editable_report_area",
-        placeholder="Tutaj pojawi się podyktowany i skorygowany tekst...",
-        height=200
+        placeholder="Tutaj pojawi się gotowy opis medyczny...",
+        height=350
     )
 
     final_report_text = podyktowany_tekst if podyktowany_tekst else "Czekam na nagranie głosu..."
 
     st.markdown("---")
-    st.subheader("📋 Gotowy Raport USG:")
+    st.subheader("📋 Gotowy Raport USG (do skopiowania):")
     st.code(final_report_text, language=None)
 
 # ==========================================
@@ -278,11 +317,11 @@ else:
 
     def get_rodne_prostata(plec_wybor):
         if plec_wybor == "Pies (samiec niekastrowany)":
-            return "Gruczoł krokowy niepowiększony, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia. Jądra w mosznie, prawidłowej wielkości i echogeniczności, miąższ jednorodny, bez zmian ogniskowych."
+            return "Gruczoł krokowy niepowiększony, wielkości ok. ... cm x ... cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia. Jądra w mosznie, prawidłowej wielkości i echogeniczności, miąższ jednorodny, bez zmian ogniskowych."
         elif plec_wybor == "Pies (samiec kastrowany)":
             return "Gruczoł krokowy niepowiększony, fizjologicznie zmniejszony (stan po kastracji), miąższ jednorodny, bez cech zapalenia. Stan po orchidektomii – brak jąder w mosznie."
         elif plec_wybor == "Suka (cała)":
-            return "Macica niepowiększona. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
+            return "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
         else:
             return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
@@ -290,31 +329,31 @@ else:
         if pat:
             wymiary_txt = f", lewa ok. {dl} cm, prawa ok. {dp} cm" if (dl != "..." or dp != "...") else ""
             return f"Nerki prawidłowego kształtu{wymiary_txt}, {pat}. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
-        return f"Nerki prawidłowego kształtu, lewa około {dl} cm, prawa ok. {dp} cm, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
+        return f"Nerki prawidłowego kształtu i wielkości około ... cm x ... cm, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
 
     def get_spleen(pat, d_spleen):
         if pat:
             gr_txt = f", grubości około {d_spleen} cm" if d_spleen != "..." else ""
             return f"Śledziona {pat}{gr_txt}, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
-        return f"Śledziona prawidłowej wielkości, grubości około {d_spleen} cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
+        return f"Śledziona prawidłowej wielkości, grubości około ... cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
 
     def get_zoladek(d_zoladek):
-        return f"Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, pomiędzy fałdami gr. ok. {d_zoladek} mm, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego."
+        return f"Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości około ...-... mm, w trzonie ok. ... mm, okolica odźwiernika bez zmian, ściana gr. ok. ... mm, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego."
 
     def get_jelita(pat, d_dw, d_ok):
         if pat:
             return f"{pat}. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, okrężnica wypełniona uformowanymi masami kałowymi."
-        return f"Ściana dwunastnicy niepogrubiała, ok. {d_dw} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana. Światło nieposzerzone, w świetle niewielka ilość strawionej treści. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości, ok. {d_ok} mm i warstwowości, okrężnica wypełniona uformowanymi masami kałowymi."
+        return f"Ściana dwunastnicy niepogrubiała, ok. ... mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana. Światło nieposzerzone, w świetle niewielka ilość strawionej treści. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, ok. ... mm, okrężnica wypełniona uformowanymi masami kałowymi."
 
     def get_watroba(pat, d_pech):
         if pat:
             return f"Wątroba {pat}. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
-        return f"Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości, gr. ok. {d_pech} mm i echogeniczności, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
+        return f"Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. ... mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
 
     def get_trzustka(pat, d_trz):
         if pat:
             return f"Trzustka {pat}. Przewód trzustkowy nieposzerzony."
-        return f"Trzustka prawidłowej wielkości, gr. ok. {d_trz} mm i kształtu, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony."
+        return f"Trzustka prawidłowej wielkości i kształtu, gr. ok. ... mm w płacie prawym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony."
 
     def get_plyn(pat):
         if pat:
@@ -325,7 +364,7 @@ else:
         get_pecherz(pecherz_pat, val_pecherz),
         get_rodne_prostata(plec),
         get_nerki(nerki_pat, val_nerka_l, val_nerka_p),
-        "Nadnercza prawidłowej wielkości i kształtu, bez uchwytnych zmian w budowie.",
+        "Nadnercza prawidłowej wielkości i kształtu, grubości około ... mm, bez uchwytnych zmian w budowie.",
         get_spleen(spleen_pat, val_spleen),
         get_zoladek(val_zoladek),
         get_jelita(jelita_pat, val_dwunastnica, val_okresnica),
@@ -341,5 +380,5 @@ else:
     final_report_text = "\n\n".join(report_sections)
 
     st.markdown("---")
-    st.subheader("📋 Wygenerowany Opis USG:")
+    st.subheader("📋 Gotowy Raport USG (do skopiowania):")
     st.code(final_report_text, language=None)
