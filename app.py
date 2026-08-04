@@ -1,5 +1,5 @@
 import streamlit as st
-import streamlit.components.v1 as components
+from streamlit_mic_recorder import speech_to_text
 
 # 1. Konfiguracja strony
 st.set_page_config(
@@ -81,7 +81,7 @@ with st.sidebar:
 # WYBÓR TRYBU PRACY NA SAMEJ GÓRZE
 tryb = st.radio(
     "Wybierz tryb pracy:",
-    ["🎙️ TRYB 1: Dyktowanie swobodne (Bezpośrednio na stronie)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
+    ["🎙️ TRYB 1: Dyktowanie swobodne", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
     horizontal=True,
     key="tryb_pracy"
 )
@@ -89,114 +89,45 @@ tryb = st.radio(
 st.markdown("---")
 
 # ==========================================
-# TRYB 1: DYKTOWANIE SWOBODNE BEZPOŚREDNIO NA STRONIE
+# TRYB 1: DYKTOWANIE SWOBODNE
 # ==========================================
-if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Bezpośrednio na stronie)":
+if tryb == "🎙️ TRYB 1: Dyktowanie swobodne":
     st.subheader("🎙️ Swobodne dyktowanie badania")
-    st.caption("Kliknij przycisk mikrofonu, zezwól przeglądarce na użycie mikrofonu i dyktuj. Tekst pojawi się bezpośrednio w oknie poniżej.")
+    st.caption("Kliknij przycisk poniżej, podyktuj badanie po polsku i kliknij go ponownie, aby zakończyć. Tekst automatycznie wpisze się do opisu.")
 
-    # Samowystarczalny moduł HTML + JavaScript (Mikrofon + Pole Tekstowe + Kopiowanie)
-    speech_html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; }
-        .container { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px; }
-        .btn-group { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-        .mic-btn { background-color: #0d5c58; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 6px; }
-        .mic-btn.recording { background-color: #dc2626; animation: pulse 1.5s infinite; }
-        .copy-btn { background-color: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 6px; font-weight: 500; cursor: pointer; font-size: 14px; }
-        .copy-btn:hover { background-color: #e2e8f0; }
-        .status { font-size: 13px; color: #64748b; font-weight: 500; }
-        textarea { width: 100%; height: 220px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; font-size: 14px; line-height: 1.5; font-family: inherit; resize: vertical; outline: none; }
-        textarea:focus { border-color: #0d5c58; box-shadow: 0 0 0 2px rgba(13, 92, 88, 0.2); }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-    </style>
-    </head>
-    <body>
-    <div class="container">
-        <div class="btn-group">
-            <button id="micBtn" class="mic-btn" onclick="toggleDictation()">
-                <span id="micIcon">🎙️</span> <span id="micText">Włącz Mikrofon</span>
-            </button>
-            <button class="copy-btn" onclick="copyText()">📋 Skopiuj opis</button>
-            <span id="status" class="status">Mikrofon gotowy</span>
-        </div>
-        <textarea id="output" placeholder="Naciśnij 'Włącz Mikrofon' i zacznij dyktować po polsku..."></textarea>
-    </div>
+    # Pamięć sesji dla rozpoznanego tekstu
+    if 'text_spoken' not in st.session_state:
+        st.session_state['text_spoken'] = ""
 
-    <script>
-        var recognition;
-        var isRecognizing = false;
-        var output = document.getElementById('output');
-        var micBtn = document.getElementById('micBtn');
-        var micText = document.getElementById('micText');
-        var status = document.getElementById('status');
+    # Profesjonalny komponent Speech-to-Text w czystym Pythonie
+    text_result = speech_to_text(
+        language='pl',
+        start_prompt="🎙️ Rozpocznij dyktowanie",
+        stop_prompt="⏹️ Zakończ i przelicz na tekst",
+        just_once=False,
+        use_container_width=False,
+        key='STT'
+    )
 
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            var SpeechRecognition = window.SpeechRecognition || webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = 'pl-PL';
+    if text_result:
+        st.session_state['text_spoken'] = text_result
 
-            recognition.onstart = function() {
-                isRecognizing = true;
-                micBtn.classList.add('recording');
-                micText.innerText = 'Zatrzymaj Nagrywanie';
-                status.innerText = '🔴 Nagrywanie w toku... Mów do mikrofonu';
-                status.style.color = '#dc2626';
-            };
+    # Okno edycji podyktowanego tekstu
+    podyktowany_tekst = st.text_area(
+        "Podyktowany tekst (możesz go edytować ręcznie):",
+        value=st.session_state['text_spoken'],
+        height=200
+    )
 
-            recognition.onerror = function(event) {
-                status.innerText = '⚠️ Błąd mikrofonu: ' + event.error;
-                status.style.color = '#b91c1c';
-            };
+    if podyktowany_tekst:
+        final_report_text = f"OPIS BADANIA USG:\n\n{podyktowany_tekst}"
+    else:
+        final_report_text = "Czekam na dyktowanie..."
 
-            recognition.onend = function() {
-                isRecognizing = false;
-                micBtn.classList.remove('recording');
-                micText.innerText = 'Włącz Mikrofon';
-                status.innerText = '⚪ Nagrywanie zakończone';
-                status.style.color = '#64748b';
-            };
-
-            recognition.onresult = function(event) {
-                var finalTranscript = '';
-                for (var i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript + ' ';
-                    }
-                }
-                if (finalTranscript.length > 0) {
-                    output.value += finalTranscript;
-                }
-            };
-        } else {
-            status.innerText = '⚠️ Przeglądarka nie obsługuje dyktowania (Użyj Google Chrome lub MS Edge).';
-        }
-
-        function toggleDictation() {
-            if (isRecognizing) {
-                recognition.stop();
-            } else {
-                recognition.start();
-            }
-        }
-
-        function copyText() {
-            output.select();
-            document.execCommand('copy');
-            status.innerText = '✅ Skopiowano opis do schowka!';
-            status.style.color = '#16a34a';
-        }
-    </script>
-    </body>
-    </html>
-    """
-    
-    components.html(speech_html, height=360)
+    st.markdown("---")
+    st.subheader("📋 Wygenerowany Opis USG:")
+    st.caption("Użyj ikony 📋 w prawym górnym rogu poniższego pola, aby natychmiast skopiować cały raport.")
+    st.code(final_report_text, language=None)
 
 # ==========================================
 # TRYB 2: TABELA WYMIARÓW + SZYBKIE PATOLOGIE
