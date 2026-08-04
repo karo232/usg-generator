@@ -2,6 +2,7 @@ import streamlit as st
 import tempfile
 import os
 
+# Bezpieczny import biblioteki OpenAI
 try:
     from openai import OpenAI
     HAS_OPENAI = True
@@ -14,11 +15,24 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# Odczyt klucza z bezpiecznego magazynu Streamlit Secrets
-client = None
-if HAS_OPENAI and "OPENAI_API_KEY" in st.secrets:
-    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# === UNIWERSALNE POBIERANIE KLUCZA API ===
+api_key = None
 
+# 1. Sprawdź w Streamlit Secrets
+if "OPENAI_API_KEY" in st.secrets:
+    api_key = st.secrets["OPENAI_API_KEY"]
+elif "openai" in st.secrets and "api_key" in st.secrets["openai"]:
+    api_key = st.secrets["openai"]["api_key"]
+# 2. Sprawdź w zmiennych środowiskowych systemu
+elif os.environ.get("OPENAI_API_KEY"):
+    api_key = os.environ.get("OPENAI_API_KEY")
+
+# Inicjalizacja klienta
+client = None
+if HAS_OPENAI and api_key:
+    client = OpenAI(api_key=api_key)
+
+# Stylizacja CSS
 st.markdown("""
     <style>
     .main-header {
@@ -93,7 +107,7 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
                 except Exception as e:
                     st.error(f"Błąd OpenAI API: {e}")
         else:
-            st.error("⚠️ Brak podpiętego klucza w panelu Streamlit Secrets (sprawdź Krok 3).")
+            st.error("⚠️ Brak podpiętego klucza w Secrets lub klucz jest nieaktywny.")
 
     podyktowany_tekst = st.text_area(
         "Wynik transkrypcji (możesz tutaj edytować tekst):",
