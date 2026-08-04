@@ -112,7 +112,7 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + Ścisły Szablon Medyc
                             "Transkrypcja opisu badania USG weterynaryjnego u psa lub kota. "
                             "Słownictwo: wątroba, śledziona, nerki, trzustka, pęcherz moczowy, "
                             "jelita, dwunastnica, żołądek, okrężnica, nadnercza, prostata, macica, jajniki, "
-                            "polipy, miedniczki, mineralizacje, zachyłki."
+                            "polipy, miedniczki, mineralizacje, zachyłki, jelito czcze, BŚO."
                         )
                         res = client.audio.transcriptions.create(
                             model="whisper-1",
@@ -134,60 +134,59 @@ if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper + Ścisły Szablon Medyc
                     try:
                         system_prompt = f"""
 Jesteś profesjonalnym edytorem raportów USG weterynaryjnego.
-Twoim zadaniem jest przekształcenie dyktowanej notatki lekarza w PEŁNE, BOGATE AKAPITY MEDYCZNE.
+Twoim zadaniem jest przekształcenie podyktowanej notatki lekarza w PEŁNE, BOGATE AKAPITY MEDYCZNE wg podanych niżej wzorców.
 
-KRYTYCZNA ZASADA FORMATOWANIA:
-Dla każdego narządu wymienionego przez lekarza MUSISZ użyć poniższego DOKŁADNEGO PEŁNEGO WZORCA TEKSTOWEGO. 
-NIGDY NIE SKRACAJ zdań z wzorca! Jeżeli lekarz podyktował szczegół lub patologię (np. "obkurczony", "mineralizacje", "polipy", "brak cech niedrożności"), PODMIEŃ LUB UZUPEŁNIJ ten konkretny fragment wewnątrz poniższego pełnego akapitu wzorcowego, zachowując całą resztę wzorcowego opisu!
+ZASADA GŁÓWNA:
+Nie wklejaj skrótowych zdań z dyktowania. Użyj PEŁNEJ MATRYCY WZORCOWEJ dla każdego wymienionego narządu, wplatając w nią wymiary i patologie podane przez lekarza. Popraw błędy fonetyczne.
 
-JEŚLI LEKARZ NIE WSPOMNIAŁ O DANYM NARZĄDZIE W NAGRANIU – POMIŃ GO CAŁKOWICIE.
-
-Oto BEZWZGLĘDNE WZORCE AKAPITÓW dla poszczególnych narządów:
+MATRYCE AKAPITÓW DLA NARZĄDÓW:
 
 PĘCHERZ MOCZOWY:
-"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana prawidłowej budowy, mocz aechogenny, bez mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa nieposzerzona, ściana prawidłowej budowy."
+"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. [WYMIAR] mm, prawidłowej budowy, bez cech zapalenia ostrego [LUB OPIS ZAPALENIA], mocz [STAN MOCZU, np. aechogenny / lekko zagęszczony], bez uchwytnych mineralizacji formujących kamienie/osad [LUB OPIS MINERALIZACJI], lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
 
-UKŁAD ROZRODCZY / PROSTATA (Dopasuj ściśle do płci pacjenta: {plec}):
-- Jeśli Pies kastrowany: "Gruczoł krokowy obkurczony, hipoechogenny, bez zmian w budowie, typowy obraz pokastracyjny."
-- Jeśli Pies niekastrowany: "Gruczoł krokowy niepowiększony, wielkości ok. ... cm x ... cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia. Jądra w mosznie, prawidłowej wielkości i echogeniczności, miąższ jednorodny, bez zmian ogniskowych."
-- Jeśli Suka cała: "Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
-- Jeśli Suka kastrowana: "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
+UKŁAD ROZRODCZY / PROSTATA (płeć: {plec}):
+- Jeśli Pies niekastrowany:
+"Gruczoł krokowy niepowiększony, normoechogenny, jednorodny echogenicznie, bez zmian guzowatych, bez cech zapalenia [LUB OPIS PATOLOGII].
+Jądra prawidłowej wielkości i kształtu, miąższ obu jąder bez uchwytnych zmian w budowie [LUB OPIS PATOLOGII]."
+- Jeśli Pies kastrowany:
+"Gruczoł krokowy obkurczony, hipoechogenny, bez zmian w budowie, typowy obraz pokastracyjny."
+- Jeśli Suka cała:
+"Macica niepowiększona, na wysokości rogów śr. ok. ... mm, na wysokości szyjki macicy ok. ... mm, na wysokości trzonu narządu ok. ... mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, wielkości ok. ... mm x ... mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
+- Jeśli Suka kastrowana:
+"Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
 NERKI:
-- Stan domyślny: "Nerki prawidłowego kształtu i wielkości, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, zachyłki miedniczek nerkowych nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
-- BEZWZGLĘDNA REGUŁA PATOLOGII: Jeżeli lekarz wspomni o mineralizacjach, złogach lub zmianach w zachyłkach/miedniczkach, ZASTĄP fragment "bez uchwytnych złogów w świetle" PODYKTOWANYM OPISEM (np. "w zachyłkach obecne drobne mineralizacje, ale bez cech niedrożności").
+"Nerki prawidłowego kształtu i wielkości [EUTUALNIE DODAJ WYMIARY: lewa ok. ... cm x ... cm, prawa ok. ... cm x ... cm], kora i rdzeń prawidłowej echogeniczności [LUB OPIS ECHOGENICZNOŚCI KORY], nerki o wyraźnej granicy korowo-rdzeniowej [LUB LEKKO ZATARTEJ], stosunek obu warstw zachowany [LUB POGRUBIAŁA KORA]. [DODAJ OPIS PRZEBUDOWY, NP. cechy umiarkowanej przebudowy przewlekłej, w typie zwyrodnieniowo-pozapalnym]. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone [LUB ZACHYŁKI MIEDNICZEK NIEPOSZERZONE], bez uchwytnych złogów w świetle [LUB OPIS MINERALIZACJI W ZACHYŁKACH]. Moczowody bez uchwytnych zmian w budowie."
 
 NADNERCZA:
-"Nadnercza prawidłowej wielkości i kształtu, bez uchwytnych zmian w budowie."
+"Nadnercza prawidłowej wielkości i kształtu [DODAJ WYMIAR, NP. grubości około 3,7-3,9 mm], bez uchwytnych zmian w budowie [LUB DODAJ ZWŁÓKNIENIA, NP. z drobnymi ogniskami zwłóknień, poza tym bez uchwytnych zmian w budowie]."
 
 ŚLEDZIONA:
-"Śledziona prawidłowej wielkości, jednorodna echogenicznie, miąższ drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
+"Śledziona prawidłowej wielkości [LUB LEKKO POWIĘKSZONA], grubości około [WYMIAR] cm na wysokości trzonu narządu, jednorodna echogenicznie, miąższ drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
 
 ŻOŁĄDEK:
-"Żołądek obkurczony, w świetle niewielka ilość gazu, ściana pomiędzy fałdami prawidłowej grubości, okolica odźwiernika bez zmian, brak cech zapalenia. Układ warstwowy zachowany, perystaltyka zachowana."
+"Żołądek nieco poszerzony [LUB OBKURCZONY], w świetle nieco zwiększona ilość płynnej treści i gazu, ściana o zachowanej warstwowości, na wysokości dna żołądka o prawidłowej grubości około [WYMIAR] mm, w trzonie [OPIS GRUBOŚCI TRZONU, NP. pogrubiała do ok. 3,1 mm, warstwa podśluzowa lekko pogrubiała, jak zapalnie przewlekle, z niewielkim zaostrzeniem], okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana [LUB LEKKO SPOWOLNIONA]."
 
 JELITA I DWUNASTNICA:
-"Ściana dwunastnicy niepogrubiała, warstwowość zachowana, światło nieposzerzone, wypełnione niewielką ilością płynnej treści, perystaltyka prawidłowa. Reszta jelit cienkich o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka zachowana. Światło nieposzerzone, wypełnione niewielką ilością płynnej treści. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, okrężnica wypełniona uformowanymi masami kałowymi."
+"Ściana dwunastnicy niepogrubiała, ok. [WYMIAR] mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka prawidłowa [LUB LEKKO SPOWOLNIONA]. [JEŚLI OPISANO PATOLOGIĘ JELITA CZCZEGO, DODAJ FULL AKAPIT: W śródbrzuszu obecność pętli jelita cienkiego o wyraźnie pogrubiałej ścianie do ok. ... mm na dł. ok. ... cm, odcinkowo o zatartej warstwowości, z pogrubiałą warstwą mięśniową do ... mm, w świetle płynna zawartość, wokół ostry odczyn zapalny – w diagnostyce różnicowej należy brać pod uwagę ostre odcinkowe zapalenie jelita czczego, ew. przebudowę o podłożu rozrostowym – sugerowana kontrola USG za ok. 7 dni]. Pozostałe jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa [LUB Z DYSKRETNYMI ZMIANAMI ZAPALNYMI], perystaltyka zachowana. Światło nieposzerzone. Węzły chłonne jelita czczego nieco przewlekle/pozapalnie przebudowane, śr. do ok. [WYMIAR] mm. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, okrężnica wypełniona uformowanymi masami kałowymi."
 
 WĄTROBA I PĘCHERZYK ŻÓŁCIOWY:
-- Stan domyślny: "Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone."
-- BEZWZGLĘDNA REGUŁA PATOLOGII: Jeśli podyktowano zmianę dotyczącą pęcherzyka żółciowego (np. polipy, zagęszczona żółć, śluz), PODMIEŃ opis pęcherzyka na opis podyktowany przez lekarza (np. "Pęcherzyk żółciowy niepowiększony, ściana lekko pogrubiała, o podwyższonej echogeniczności, z obecnością zmian w typie polipów, bez cech niedrożności, z niewielką ilością zagęszczonej żółci w świetle i śluzu przyściennie.").
+"Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności [LUB POGRUBIAŁA DO ... mm Z CECHAMI ZAPALENIA I ZAGĘSZCZONĄ ŻÓŁCIĄ], bez cech niedrożności. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
 
 TRZUSTKA:
-"Płaty trzustki prawidłowej wielkości i kształtu, struktura niezmieniona, lokalizacja prawidłowa, miąższ izoechogeniczny z otaczającym tłuszczem. Przewód trzustkowy nieposzerzony."
+"Trzustka prawidłowej wielkości i kształtu, gr. ok. [WYMIAR] mm w płacie lewym/prawym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności [LUB O NIECO OBNIŻONEJ ECHOGENICZNOŚCI Z CECHAMI PRZEBUDOWY PRZEWLEKŁEJ/POZAPALNEJ], bez cech zapalenia ostrego. Przewód trzustkowy [POSZERZONY DO ... mm / NIEPOSZERZONY], bez uchwytnych złogów w świetle."
 
 WĘZŁY CHŁONNE:
-"Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie."
+"Pozostałe węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie."
 
 WOLNY PŁYN:
 "Brak wolnego płynu w jamie brzusznej."
 
 {( 'TARCZYCA:\n"TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych."' if dodaj_tarczyce else '' )}
 
-ZASADY KOŃCOWE:
-- Wynik ma być ciągłym, czystym tekstem medycznym.
-- Bez numeracji (1., 2.), bez punktów, bez nagłówków medycznych, bez powitań ani podsumowań.
-- Oddzielaj akapity dla poszczególnych narządów pojedynczym zstąpieniem do nowej linii.
+ZASADY WYLOTOWE:
+- Oddzielaj narządy nową linią.
+- Zwracaj WYŁĄCZNIE czysty tekst opisu medycznego.
 """
 
                         response = client.chat.completions.create(
@@ -322,7 +321,7 @@ else:
 
     def get_rodne_prostata(plec_wybor):
         if plec_wybor == "Pies (samiec niekastrowany)":
-            return "Gruczoł krokowy niepowiększony, wielkości ok. ... cm x ... cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia. Jądra w mosznie, prawidłowej wielkości i echogeniczności, miąższ jednorodny, bez zmian ogniskowych."
+            return "Gruczoł krokowy niepowiększony, normoechogenny, jednorodny echogenicznie, bez zmian guzowatych, bez cech zapalenia.\nJądra prawidłowej wielkości i kształtu, miąższ obu jąder bez uchwytnych zmian w budowie."
         elif plec_wybor == "Pies (samiec kastrowany)":
             return "Gruczoł krokowy obkurczony, hipoechogenny, bez zmian w budowie, typowy obraz pokastracyjny."
         elif plec_wybor == "Suka (cała)":
@@ -334,7 +333,7 @@ else:
         if pat:
             wymiary_txt = f", lewa ok. {dl} cm, prawa ok. {dp} cm" if (dl != "..." or dp != "...") else ""
             return f"Nerki prawidłowego kształtu{wymiary_txt}, {pat}. Torebka narządu gładka, hiperechogenna, zachyłki miedniczek nerkowych nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
-        return f"Nerki prawidłowego kształtu i wielkości, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, zachyłki miedniczek nerkowych nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
+        return f"Nerki prawidłowego kształtu i wielkości, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, hiperechogenna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
 
     def get_spleen(pat, d_spleen):
         if pat:
@@ -369,13 +368,12 @@ else:
         get_pecherz(pecherz_pat, val_pecherz),
         get_rodne_prostata(plec),
         get_nerki(nerki_pat, val_nerka_l, val_nerka_p),
-        "Nadnercza prawidłowej wielkości i kształtu, bez uchwytnych zmian w budowie.",
+        "Pozostałe węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie.",
         get_spleen(spleen_pat, val_spleen),
         get_zoladek(val_zoladek),
         get_jelita(jelita_pat, val_dwunastnica, val_okresnica),
         get_watroba(watroba_pat, val_pecherzyk),
         get_trzustka(trzustka_pat, val_trzustka),
-        "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie.",
         get_plyn(plyn_pat)
     ]
     
