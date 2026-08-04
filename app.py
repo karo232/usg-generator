@@ -1,12 +1,5 @@
 import streamlit as st
 
-# Bezpieczny import nagrywarki
-try:
-    from st_audiorec import st_audiorec
-    HAS_MIC = True
-except ImportError:
-    HAS_MIC = False
-
 # 1. Konfiguracja strony
 st.set_page_config(
     page_title="USG Vet Scans - Generator Opisów", 
@@ -99,16 +92,20 @@ st.markdown("---")
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie swobodne (Mikrofon)":
     st.subheader("🎙️ Swobodne dyktowanie badania")
-    st.caption("Użyj poniższego rejestratora dźwięku, a następnie wpisz lub wklej treść w pole poniżej:")
     
-    if HAS_MIC:
-        # Pasek nagrywania dźwięku z mikrofonu komputera
-        wav_audio_data = st_audiorec()
-    else:
-        st.info("Ładowanie modułu audio...")
+    col_mic, col_info = st.columns([1, 2])
+    
+    with col_mic:
+        st.markdown("**1. Nagraj głos:**")
+        # Wbudowany w Streamlit dyktafon
+        audio_value = st.audio_input("Nagraj notatkę głosową")
+
+    with col_info:
+        st.markdown("**2. Porada dla komputerów (Windows / Mac):**")
+        st.info("💡 **Najszybsze dyktowanie na komputerze:** Kliknij w pole tekstowe poniżej i naciśnij skrót **Win + H** (Windows) lub kliknij 2x **Fn** (Mac), aby włączyć dyktowanie tekstu w języku polskim bezpośrednio z klawiatury.")
 
     podyktowany_tekst = st.text_area(
-        "Wpisz lub podyktuj treść badania:",
+        "3. Wpisz lub podyktuj treść badania tutaj:",
         placeholder="np. Pęcherz moczowy miernie wypełniony ściana 2.5 mm, nerka lewa 4.5x2.8 cm...",
         height=200
     )
