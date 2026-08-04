@@ -148,7 +148,7 @@ def add_to_history(report_text):
 def get_rodne_text(plec_wybor):
     p = str(plec_wybor).lower()
     if "niekastrowany" in p: 
-        return "Gruczoł krokowy niepowiększony, wielkości ok. 2,6 cm x 2,5 cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia. Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie."
+        return "Gruczoł krokowy niepowiększony, wielkości ok. 2,6 cm x 2,5 cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia."
     elif "samiec kastrowany" in p: 
         return "Gruczoł krokowy obkurczony, zanikowy, wielkości ok. 1 cm x 0,7 cm, miąższ hipoechogenny, jednorodny, bez zmian w budowie."
     elif "cała" in p: 
@@ -214,9 +214,12 @@ with st.sidebar:
         dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
 
-# Pobranie aktywnych szablonów narządów
+# Pobranie aktywnych szablonów narządów i stanu płci
 szablony = get_templates(st.session_state["gatunek_pacjenta"])
 g_akt = st.session_state["gatunek_pacjenta"]
+plec_akt = st.session_state["plec_pacjenta"]
+is_samiec = "samiec" in plec_akt.lower() or "kocur" in plec_akt.lower()
+is_niekastrowany = "niekastrowany" in plec_akt.lower()
 
 # GENEROWANIE DOMYŚLNEGO "ZDROWEGO" OPISU (DLA WSZYSTKICH TRYBÓW)
 def get_default_full_report(nadn_val="4,3"):
@@ -230,19 +233,24 @@ def get_default_full_report(nadn_val="4,3"):
     def_trz = "6,5" if g_akt == "Kot" else "8"
     def_pech_zol = "1" if g_akt == "Kot" else "1,1"
 
-    sections = [
-        szablony['pecherz'].format(pech=def_pech),
-        get_rodne_text(st.session_state["plec_pacjenta"]),
-        szablony['nerki'].format(nerki=def_nerki),
-        szablony['nadnercza'].format(nadn=def_nadn),
-        szablony['sledziona'].format(spl=def_spl),
-        szablony['zoladek'].format(zol=def_zol),
-        szablony['jelita'].format(dwu=def_dwu, okr=def_okr),
-        szablony['watroba'].format(pech_zol=def_pech_zol),
-        szablony['trzustka'].format(trz=def_trz),
-        szablony['wezly'],
-        szablony['plyn']
-    ]
+    sections = []
+    
+    # Jeśli pies niekastrowany (norma), jądra idą nad pęcherz
+    if is_samiec and is_niekastrowany:
+        sections.append("Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie.")
+        
+    sections.append(szablony['pecherz'].format(pech=def_pech))
+    sections.append(get_rodne_text(plec_akt))
+    sections.append(szablony['nerki'].format(nerki=def_nerki))
+    sections.append(szablony['nadnercza'].format(nadn=def_nadn))
+    sections.append(szablony['sledziona'].format(spl=def_spl))
+    sections.append(szablony['zoladek'].format(zol=def_zol))
+    sections.append(szablony['jelita'].format(dwu=def_dwu, okr=def_okr))
+    sections.append(szablony['watroba'].format(pech_zol=def_pech_zol))
+    sections.append(szablony['trzustka'].format(trz=def_trz))
+    sections.append(szablony['wezly'])
+    sections.append(szablony['plyn'])
+    
     if dodaj_tarczyce:
         sections.append("TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych.")
     
@@ -310,7 +318,8 @@ if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
                 if raw_transcript and len(raw_transcript) > 2:
                     with st.spinner("🩺 KROK 2/2: Generowanie pełnych akapitów opisu USG..."):
                         try:
-                            sz_rozrodczy = get_rodne_text(st.session_state["plec_pacjenta"])
+                            sz_rozrodczy = get_rodne_text(plec_akt)
+                            ai_jadra = "Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie." if (is_samiec and is_niekastrowany) else ""
                             ai_pech = szablony['pecherz'].replace('{pech}', '[WYMIAR]')
                             ai_ner = szablony['nerki'].replace('{nerki}', 'około [DODAJ WYMIARY]')
                             ai_nadn = szablony['nadnercza'].replace('{nadn}', '[WYMIAR]')
@@ -322,8 +331,9 @@ if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
                             
                             system_prompt = f"""
 Jesteś profesjonalnym edytorem raportów USG weterynaryjnego. Przekształć notatkę w PEŁNE AKAPITY MEDYCZNE wg wzorców.
-GATUNEK: {st.session_state["gatunek_pacjenta"]}
-KRYTYCZNA ZASADA PŁCI (Pacjent: {st.session_state["plec_pacjenta"]}): "{sz_rozrodczy}"
+GATUNEK: {gat}
+KRYTYCZNA ZASADA PŁCI (Pacjent: {plec_akt}):
+{(ai_jadra + '\n') if ai_jadra else ''}OPIS ROZRODU / PROSTATY: "{sz_rozrodczy}"
 
 MATRYCE AKAPITÓW DLA POZOSTAŁYCH NARZĄDÓW:
 PĘCHERZ MOCZOWY: "{ai_pech}"
@@ -402,7 +412,6 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
 
     st.markdown("### 🧩 Baza Patologii i Odchyleń")
 
-    # Definicje nowych, lekarskich patologii
     pat_pecherz_options = [
         "Prawidłowy (Norma)",
         "Słabo wypełniony pęcherz",
@@ -443,7 +452,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         with col_d2:
             chk_zmiana = st.checkbox("Dodaj opis: Zmiana podskórna (okolica pośladka)")
 
-    # Logika podstawiania patologii pęcherza
+    # Logika patologii pęcherza
     if sel_pecherz == "Słabo wypełniony pęcherz":
         txt_pech = "Pęcherz moczowy słabo wypełniony, prawidłowego kształtu, ściana gr. ok. 4,4 mm, jednak trudna do pełnej oceny ze względu na obkurczenie, wtórne do słabego wypełnienia pęcherza, mocz aechogenny, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
     elif sel_pecherz == "Zagęszczony mocz":
@@ -461,26 +470,29 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     else:
         txt_pech = szablony['pecherz'].format(pech=v_pech)
 
-    # Logika układu rozrodczego (Samica / Samiec)
-    plec_akt = st.session_state["plec_pacjenta"]
-    is_samiec = "samiec" in plec_akt.lower() or "kocur" in plec_akt.lower()
+    # Jądra nad pęcherzem (dla niekastrowanego samca)
+    jadra_sekcja = ""
+    if is_samiec and is_niekastrowany:
+        if sel_prostata == "Wnętrostwo":
+            jadra_sekcja = "Lewe jądro w worku mosznowym, prawidłowej wielkości i kształtu, ok. 2,2 cm x 1,4 cm, miąższ normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrze bez uchwytnych zmian w budowie. Prawe jądro wnętrowskie, zlokalizowane w kanale pachwinowym, w około 1/3 doogonowej części jego długości/ na terenie jamy brzusznej, doogonowo od nerki lewej i śledziony, w sąsiedztwie rozwidlenia aorty. Jądro nieco pomniejszone, wielkości ok. 1,3 cm x 2,2 cm, prawidłowego kształtu, miąższ o nieco obniżonej echogeniczności, jednorodny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrze bez zmian."
+        elif sel_prostata == "Guz jądra":
+            jadra_sekcja = "Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, wielkości ok. 3 cm x 1,5 cm, miąższ obu jąder normoechogenny, w miąższu jądra prawego obecność zmiany ogniskowej, wielkości ok. 10 mm x 5 mm, dobrze odgraniczonej, o niejednorodnej strukturze, w przewadze hiperechogennej względem miąższu jądra, dość bogato unaczynionej centralnie i obwodowo, śródjądrze jądra prawego zatarte, lewego dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie."
+        else:
+            jadra_sekcja = "Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie."
 
-    if not is_samiec:
+    # Układ rozrodczy / Prostata
+    if is_samiec:
+        if sel_prostata == "Przerost prostaty":
+            txt_rodne = "Gruczoł krokowy powiększony, wielkości ok. 4,3 cm x 3,4 cm, miąższ hiperechogenny, nieco niejednorodny, z licznymi, drobnymi torbielami prostymi, śr. do ok. 3 mm, bez uchwytnych zmian guzowatych, bez cech zapalenia ostrego."
+        else:
+            txt_rodne = get_rodne_text(plec_akt)
+    else:
         if sel_macica == "Macica - ruja":
             txt_rodne = "Macica lekko rozpulchniona, na wysokości rogów śr. do ok. 5,5 mm, na wysokości szyjki macicy do ok. 10 mm, na wysokości trzonu narządu do ok. 7 mm, ściana lekko rozpulchniona do ok. 2,4 mm, prawidłowej budowy, warstwa śluzowa o nieco obniżonej echogeniczności, brak cech ropnego zapalenia w momencie badania. Jajniki lekko powiększone, wielkości ok. 14 mm x 7 mm, normoechogenne, w miąższu widoczne pojedyncze, hipoechogenne obszary, śr. do ok. 2 mm, odpowiadające prawidłowym komórkom jajnikowym, brak zmian guzowatych, brak uchwytnych zmian patologicznych."
         elif sel_macica == "Ropne zapalenie macicy":
             txt_rodne = "Macica powiększona, na wysokości rogów śr. do ok. 10 mm, na wysokości szyjki macicy do ok. 10 mm, na wysokości trzonu narządu do ok. 7 mm. Ściana prawidłowej grubości, o lekko nieregularnej powierzchni warstwy śluzowej, w świetle macicy zwiększona ilość aechogennego płynu. Jajniki niepowiększone, wielkości ok. 8 mm x 5 mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
         elif sel_macica == "Śluzo/wodomacicze":
             txt_rodne = "Macica powiększona, na wysokości rogów śr. ok. 10 mm, na wysokości szyjki macicy ok. 10 mm, na wysokości trzonu narządu ok. 7 mm. Ściana lekko pogrubiała do ok. 2,5 mm, o lekko podwyższonej echogeniczności, w świetle macicy nieco zwiększona ilość aechogennego płynu. Jajniki niepowiększone, wielkości ok. 8 mm x 5 mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
-        else:
-            txt_rodne = get_rodne_text(plec_akt)
-    else:
-        if sel_prostata == "Przerost prostaty":
-            txt_rodne = "Gruczoł krokowy powiększony, wielkości ok. 4,3 cm x 3,4 cm, miąższ hiperechogenny, nieco niejednorodny, z licznymi, drobnymi torbielami prostymi, śr. do ok. 3 mm, bez uchwytnych zmian guzowatych, bez cech zapalenia ostrego."
-        elif sel_prostata == "Wnętrostwo":
-            txt_rodne = "Lewe jądro w worku mosznowym, prawidłowej wielkości i kształtu, ok. 2,2 cm x 1,4 cm, miąższ normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrze bez uchwytnych zmian w budowie. Prawe jądro wnętrowskie, zlokalizowane w kanale pachwinowym, w około 1/3 doogonowej części jego długości/ na terenie jamy brzusznej, doogonowo od nerki lewej i śledziony, w sąsiedztwie rozwidlenia aorty. Jądro nieco pomniejszone, wielkości ok. 1,3 cm x 2,2 cm, prawidłowego kształtu, miąższ o nieco obniżonej echogeniczności, jednorodny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrze bez zmian."
-        elif sel_prostata == "Guz jądra":
-            txt_rodne = "Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, wielkości ok. 3 cm x 1,5 cm, miąższ obu jąder normoechogenny, w miąższu jądra prawego obecność zmiany ogniskowej, wielkości ok. 10 mm x 5 mm, dobrze odgraniczonej, o niejednorodnej strukturze, w przewadze hiperechogennej względem miąższu jądra, dość bogato unaczynionej centralnie i obwodowo, śródjądrze jądra prawego zatarte, lewego dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie."
         else:
             txt_rodne = get_rodne_text(plec_akt)
 
@@ -491,7 +503,10 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     txt_wat = szablony['watroba'].format(pech_zol=v_pech_zol)
     txt_trz = szablony['trzustka'].format(trz=v_trz)
 
-    report_sections = [
+    report_sections = []
+    if jadra_sekcja:
+        report_sections.append(jadra_sekcja)
+    report_sections.extend([
         txt_pech, 
         txt_rodne, 
         txt_ner,
@@ -503,11 +518,11 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         txt_trz,
         szablony['wezly'], 
         szablony['plyn']
-    ]
+    ])
+    
     if dodaj_tarczyce: 
         report_sections.append("TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych.")
 
-    # Doklejanie Kłosa i Zmiany podskórnej na sam koniec
     if chk_klos:
         report_sections.append("Kłos: W badaniu USG okolicy międzypalcowej, pomiędzy palcem III i IV, prawej kończyny miednicznej obecny znaczny obrzęk tkanki podskórnej, pomiędzy tkankami obecna niewielka ilość wolnego płynu. W tkance podskórnej, od strony grzbietowej, w miejscu największego obrzęku, obecna podłużna, hiperechogenna struktura, dł. ok. 2 cm, na głębokości ok. 4 mm od skóry. Podejrzenie ciała obcego.")
     if chk_zmiana:
@@ -543,20 +558,24 @@ elif tryb == "📝 TRYB 3: Wybór Zmian":
     st.caption("Niezaznaczone narządy zostaną uzupełnione jako zdrowa norma (odpowiednia dla gatunku). Wybierz narząd, aby otworzyć pole z tekstem do modyfikacji.")
     gat = st.session_state["gatunek_pacjenta"]
 
-    organs_defaults = {
-        "Pęcherz moczowy": szablony['pecherz'].format(pech="1,1"),
-        "Układ rozrodczy": get_rodne_text(st.session_state["plec_pacjenta"]),
-        "Nerki": szablony['nerki'].format(nerki="około 3,2 cm x 1,7 cm"),
-        "Nadnercza": szablony['nadnercza'].format(nadn="4,3"),
-        "Śledziona": szablony['sledziona'].format(spl="1,4"),
-        "Żołądek": szablony['zoladek'].format(zol=("2,1" if gat == "Kot" else "2,9")),
-        "Jelita i Dwunastnica": szablony['jelita'].format(dwu="2,8", okr="1,3"),
-        "Wątroba i Pęcherzyk żółciowy": szablony['watroba'].format(pech_zol=("1" if gat == "Kot" else "1,1")),
-        "Trzustka": szablony['trzustka'].format(trz=("6,5" if gat == "Kot" else "8")),
-        "Węzły chłonne": szablony['wezly'],
-        "Wolny płyn": szablony['plyn']
-    }
-    if dodaj_tarczyce: organs_defaults["Tarczyca"] = "TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych."
+    organs_defaults = {}
+    if is_samiec and is_niekastrowany:
+        organs_defaults["Jądra"] = "Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie."
+    
+    organs_defaults["Pęcherz moczowy"] = szablony['pecherz'].format(pech="1,1")
+    organs_defaults["Układ rozrodczy"] = get_rodne_text(plec_akt)
+    organs_defaults["Nerki"] = szablony['nerki'].format(nerki="około 3,2 cm x 1,7 cm")
+    organs_defaults["Nadnercza"] = szablony['nadnercza'].format(nadn="4,3")
+    organs_defaults["Śledziona"] = szablony['sledziona'].format(spl="1,4")
+    organs_defaults["Żołądek"] = szablony['zoladek'].format(zol=("2,1" if gat == "Kot" else "2,9"))
+    organs_defaults["Jelita i Dwunastnica"] = szablony['jelita'].format(dwu="2,8", okr="1,3")
+    organs_defaults["Wątroba i Pęcherzyk żółciowy"] = szablony['watroba'].format(pech_zol=("1" if gat == "Kot" else "1,1"))
+    organs_defaults["Trzustka"] = szablony['trzustka'].format(trz=("6,5" if gat == "Kot" else "8"))
+    organs_defaults["Węzły chłonne"] = szablony['wezly']
+    organs_defaults["Wolny płyn"] = szablony['plyn']
+
+    if dodaj_tarczyce: 
+        organs_defaults["Tarczyca"] = "TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych."
 
     final_mode3_paragraphs = []
     
