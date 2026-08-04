@@ -36,7 +36,7 @@ if HAS_OPENAI and api_key:
     except Exception: client = None
 
 # ==========================================
-# 2. ZAAWANSOWANA STYLIZACJA CSS (Wizualizacja pod markę USGVet Scans)
+# 2. ZAAWANSOWANA STYLIZACJA CSS
 # ==========================================
 st.markdown("""
     <style>
@@ -109,27 +109,30 @@ st.markdown("""
         box-shadow: 0 4px 8px rgba(35, 122, 159, 0.1) !important;
     }
 
-    /* KARTY TRYBÓW PRACY (Przerobione Radio Buttons) */
+    /* KARTY TRYBÓW PRACY - WYRÓWNANE DO TEJ SAMEJ WIELKOŚCI */
     div[role="radiogroup"] {
         display: flex;
         flex-direction: row;
         gap: 15px;
         justify-content: center;
         background: transparent !important;
+        width: 100%;
     }
     div[role="radiogroup"] > label {
         background-color: white !important;
         border: 2px solid #e0e6e8 !important;
         border-radius: 15px !important;
-        padding: 25px 20px !important;
+        padding: 15px 10px !important;
         cursor: pointer !important;
         transition: all 0.3s ease !important;
         box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important;
-        flex: 1;
+        flex: 1 1 0px !important; /* Wymusza jednakową szerokość */
+        min-height: 90px !important; /* Wymusza jednakową, stałą wysokość */
         text-align: center !important;
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
+        margin: 0 !important;
     }
     /* Ukrycie kropki z Radio */
     div[role="radiogroup"] > label > div:first-child {
@@ -141,6 +144,7 @@ st.markdown("""
         font-weight: 700 !important;
         color: var(--color-dark-teal) !important;
         margin: 0 !important;
+        line-height: 1.3 !important;
     }
     /* Aktywna Karta (Wybrany Tryb) */
     div[role="radiogroup"] > label[data-checked="true"] {
@@ -150,12 +154,12 @@ st.markdown("""
         transform: translateY(-3px);
     }
     
-    /* Pola tekstowe */
-    .stTextArea textarea, .stTextInput input {
+    /* Pola tekstowe i Selectbox */
+    .stTextArea textarea, .stTextInput input, .stSelectbox > div > div {
         border-radius: 10px !important;
         border: 1px solid #dce4e6 !important;
     }
-    .stTextArea textarea:focus, .stTextInput input:focus {
+    .stTextArea textarea:focus, .stTextInput input:focus, .stSelectbox > div > div:focus {
         border-color: var(--color-btn-teal) !important;
         box-shadow: 0 0 0 1px var(--color-btn-teal) !important;
     }
@@ -189,21 +193,20 @@ def get_rodne_text(plec_wybor):
     else: return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
 # ==========================================
-# SIDEBAR: USTAWIENIA GÓRNE
+# SIDEBAR: USTAWIENIA GÓRNE (Teraz z rozwijaną listą!)
 # ==========================================
 with st.sidebar:
     st.header("⚙️ Konfiguracja Pacjenta")
-    with st.container(border=True):
-        plec = st.radio(
-            "Wybierz płeć i stan fizjologiczny:",
-            ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"],
-            key="plec_pacjenta"
-        )
-        st.divider()
-        dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
+    plec = st.selectbox(
+        "Wybierz płeć i stan fizjologiczny:",
+        ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"],
+        key="plec_pacjenta"
+    )
+    st.markdown("<br>", unsafe_allow_html=True)
+    dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
 # ==========================================
-# WYBÓR TRYBU PRACY (Wizualnie stają się Kartami przez CSS)
+# WYBÓR TRYBU PRACY (Wizualnie stają się Równymi Kartami przez CSS)
 # ==========================================
 tryb = st.radio(
     "Wybierz tryb pracy:",
@@ -393,13 +396,17 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         st.session_state["last_mode2_hash"] = mode2_final_report
 
     st.markdown("---")
-    
-    st.text_area("Edytor Raportu:", key="editable_report_area_2", height=350)
-    
-    if st.button("💾 Zapisz ten opis do historii", key="save_btn_tab2"):
-        add_to_history(st.session_state.get("editable_report_area_2", mode2_final_report))
-        st.success("Zapisano badanie do paska bocznego!")
+    c_btn1, c_btn2 = st.columns([1, 4])
+    with c_btn1:
+        if st.button("🔄 Odśwież widok", use_container_width=True):
+            st.session_state["editable_report_area_2"] = mode2_final_report
+            st.rerun()
+    with c_btn2:
+        if st.button("💾 Zapisz ten opis do historii", type="primary", key="save_btn_tab2", use_container_width=True):
+            add_to_history(st.session_state.get("editable_report_area_2", mode2_final_report))
+            st.success("Zapisano badanie do paska bocznego!")
 
+    st.text_area("Edytor Raportu:", key="editable_report_area_2", height=350)
 
 # ==========================================
 # TRYB 3: WYBÓR ZMIENIONYCH NARZĄDÓW
@@ -433,7 +440,7 @@ elif tryb == "📝 TRYB 3: Wybór Zmian":
         for i, (organ_name, default_text) in enumerate(items):
             col = c_left if i < half else c_right
             with col:
-                is_changed = st.checkbox(f"⚠️ Zmiany: **{organ_name}**", key=f"chk_{organ_name}")
+                is_changed = st.checkbox(f"🔴 Zmiany: **{organ_name}**", key=f"chk_{organ_name}")
                 if is_changed:
                     custom_text = st.text_area(f"Opisz patologię ({organ_name}):", value=default_text, key=f"txt_{organ_name}", height=100)
                     final_mode3_paragraphs.append(custom_text)
