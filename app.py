@@ -1,5 +1,5 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import requests
 
 # 1. Konfiguracja strony
 st.set_page_config(
@@ -8,7 +8,7 @@ st.set_page_config(
     page_icon="🩺"
 )
 
-# 2. Stylizacja CSS
+# 2. Stylizacja CSS nawiązująca do marki usgvetscans.pl
 st.markdown("""
     <style>
     :root {
@@ -63,7 +63,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- PANEL BOCZNY ---
+# --- WYBÓR PŁCI I STANU W PANELU BOCZNYM ---
 with st.sidebar:
     st.header("⚙️ Ustawienia Pacjenta")
     plec = st.radio(
@@ -78,10 +78,10 @@ with st.sidebar:
     )
     dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
-# WYBÓR TRYBU PRACY
+# WYBÓR TRYBU PRACY NA SAMEJ GÓRZE
 tryb = st.radio(
     "Wybierz tryb pracy:",
-    ["🎙️ TRYB 1: Dyktowanie swobodne", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
+    ["🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)", "📏 TRYB 2: Tabela wymiarów + Szybkie Patologie"],
     horizontal=True,
     key="tryb_pracy"
 )
@@ -89,133 +89,59 @@ tryb = st.radio(
 st.markdown("---")
 
 # ==========================================
-# TRYB 1: DYKTOWANIE SWOBODNE
+# TRYB 1: DYKTOWANIE Z TRANSKRYPCJĄ AI (WHISPER)
 # ==========================================
-if tryb == "🎙️ TRYB 1: Dyktowanie swobodne":
-    st.subheader("🎙️ Dyktowanie opisu badania")
-    st.caption("Kliknij przycisk, aby rozpocząć dyktowanie. Upewnij się, że mówisz wyraźnie po polsku.")
+if tryb == "🎙️ TRYB 1: Dyktowanie głosem (Whisper AI)":
+    st.subheader("🎙️ Dyktowanie badania głosem")
+    st.caption("Nagraj mowę za pomocą mikrofonu poniżej. Sztuczna inteligencja przepisze słowa na tekst po polsku.")
 
-    speech_html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <meta charset="utf-8">
-    <style>
-        body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background: transparent; }
-        .card { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; }
-        .bar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
-        .btn-start { background-color: #0d5c58; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
-        .btn-stop { background-color: #dc2626; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; display: none; }
-        .btn-copy { background-color: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
-        .btn-clear { background-color: #fff; color: #64748b; border: 1px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; font-weight: 500; cursor: pointer; font-size: 14px; }
-        .status { font-size: 13px; font-weight: 600; color: #64748b; }
-        textarea { width: 100%; height: 220px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-size: 15px; line-height: 1.5; font-family: inherit; resize: vertical; outline: none; }
-        textarea:focus { border-color: #0d5c58; }
-    </style>
-    </head>
-    <body>
-    <div class="card">
-        <div class="bar">
-            <button id="startBtn" class="btn-start" onclick="startRec()">🎙️ Zacznij mówić</button>
-            <button id="stopBtn" class="btn-stop" onclick="stopRec()">⏹️ Zakończ dyktowanie</button>
-            <button class="btn-copy" onclick="copyTxt()">📋 Skopiuj opis</button>
-            <button class="btn-clear" onclick="clearTxt()">🗑️ Wyczyść</button>
-            <span id="statusLabel" class="status">Gotowy</span>
-        </div>
-        <textarea id="outputBox" placeholder="Naciśnij 'Zacznij mówić' i dyktuj treść opisu USG..."></textarea>
-    </div>
+    if 'dictated_text' not in st.session_state:
+        st.session_state['dictated_text'] = ""
 
-    <script>
-        var recognition = null;
-        var outputBox = document.getElementById('outputBox');
-        var startBtn = document.getElementById('startBtn');
-        var stopBtn = document.getElementById('stopBtn');
-        var statusLabel = document.getElementById('statusLabel');
+    # Natywny mikrofon Streamlita (brak problemów z ramkami HTML)
+    audio_file = st.audio_input("Kliknij ikone mikrofonu i podyktuj opis")
 
-        function setupSpeech() {
-            var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                statusLabel.innerText = "⚠️ Użyj Google Chrome lub Microsoft Edge.";
-                statusLabel.style.color = "#dc2626";
-                return null;
-            }
-            var rec = new SpeechRecognition();
-            rec.continuous = true;
-            rec.interimResults = false;
-            rec.lang = 'pl-PL';
+    if audio_file is not None:
+        if "OPENAI_API_KEY" in st.secrets and st.secrets["OPENAI_API_KEY"]:
+            api_key = st.secrets["OPENAI_API_KEY"]
+            
+            with st.spinner("🧠 Sztuczna inteligencja zamienia nagranie na tekst..."):
+                try:
+                    # Wysyłanie audio bezpośrednio przez zapytanie HTTP
+                    url = "https://api.openai.com/v1/audio/transcriptions"
+                    headers = {"Authorization": f"Bearer {api_key}"}
+                    files = {"file": ("audio.wav", audio_file.getvalue(), "audio/wav")}
+                    data = {"model": "whisper-1", "language": "pl"}
 
-            rec.onstart = function() {
-                startBtn.style.display = 'none';
-                stopBtn.style.display = 'inline-block';
-                statusLabel.innerText = "🔴 Słucham... Mów teraz";
-                statusLabel.style.color = "#dc2626";
-            };
+                    response = requests.post(url, headers=headers, files=files, data=data)
 
-            rec.onresult = function(event) {
-                for (var i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        outputBox.value += event.results[i][0].transcript + ' ';
-                    }
-                }
-            };
+                    if response.status_code == 200:
+                        st.session_state['dictated_text'] = response.json().get("text", "")
+                        st.success("✅ Przepisano tekst!")
+                    else:
+                        st.error(f"Błąd OpenAI API ({response.status_code}): {response.text}")
+                except Exception as e:
+                    st.error(f"Błąd połączenia: {e}")
+        else:
+            st.error("⚠️ Brak podpiętego klucza OPENAI_API_KEY w panelu Streamlit (Secrets). Patrz krok 3 poniżej.")
 
-            rec.onerror = function(e) {
-                statusLabel.innerText = "⚠️ Błąd: " + e.error;
-                statusLabel.style.color = "#dc2626";
-                resetBtns();
-            };
+    # Pole tekstowe z przepisanym tekstem
+    podyktowany_tekst = st.text_area(
+        "Wynik transkrypcji (możesz tutaj edytować tekst):",
+        value=st.session_state['dictated_text'],
+        height=200,
+        placeholder="Tutaj pojawi się rozpoznany tekst..."
+    )
 
-            rec.onend = function() {
-                resetBtns();
-            };
+    if podyktowany_tekst:
+        final_report_text = f"OPIS BADANIA USG:\n\n{podyktowany_tekst}"
+    else:
+        final_report_text = "Czekam na nagranie głosu..."
 
-            return rec;
-        }
-
-        function resetBtns() {
-            startBtn.style.display = 'inline-block';
-            stopBtn.style.display = 'none';
-            statusLabel.innerText = "⚪ Zakończono dyktowanie";
-            statusLabel.style.color = "#64748b";
-        }
-
-        function startRec() {
-            if (!recognition) recognition = setupSpeech();
-            if (recognition) {
-                try {
-                    recognition.start();
-                } catch(e) {
-                    recognition.stop();
-                    setTimeout(function(){ recognition.start(); }, 200);
-                }
-            }
-        }
-
-        function stopRec() {
-            if (recognition) {
-                recognition.stop();
-            }
-            resetBtns();
-        }
-
-        function copyTxt() {
-            outputBox.select();
-            document.execCommand('copy');
-            statusLabel.innerText = "✅ Skopiowano do schowka!";
-            statusLabel.style.color = "#16a34a";
-        }
-
-        function clearTxt() {
-            outputBox.value = '';
-            statusLabel.innerText = "Wyczyszczono";
-            statusLabel.style.color = "#64748b";
-        }
-    </script>
-    </body>
-    </html>
-    """
-    
-    components.html(speech_html, height=330)
+    st.markdown("---")
+    st.subheader("📋 Wygenerowany Opis USG:")
+    st.caption("Użyj ikony 📋 w prawym górnym rogu poniższego pola, aby natychmiast skopiować cały raport.")
+    st.code(final_report_text, language=None)
 
 # ==========================================
 # TRYB 2: TABELA WYMIARÓW + SZYBKIE PATOLOGIE
