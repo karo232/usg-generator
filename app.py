@@ -145,16 +145,22 @@ def add_to_history(report_text):
         st.session_state["reports_history"].insert(0, entry)
         st.session_state["reports_history"] = st.session_state["reports_history"][:10]
 
-def get_rodne_text(plec_wybor):
+def get_rodne_text(plec_wybor, gatunek):
     p = str(plec_wybor).lower()
-    if "niekastrowany" in p: 
-        return "Gruczoł krokowy niepowiększony, wielkości ok. 2,6 cm x 2,5 cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia."
-    elif "samiec kastrowany" in p: 
-        return "Gruczoł krokowy obkurczony, zanikowy, wielkości ok. 1 cm x 0,7 cm, miąższ hipoechogenny, jednorodny, bez zmian w budowie."
-    elif "cała" in p: 
-        return "Macica niepowiększona, na wysokości rogów śr. do ok. 4,6 mm, na wysokości szyjki macicy do ok. 6,3 mm, na wysokości trzonu narządu do ok. 5 mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, lewy wielkości ok. 8 mm x 5 mm, prawy ok. 9 mm x 5,5 mm, normoechogenne, bez uchwytnych zmian guzowatych, bez uchwytnych zmian w budowie."
-    else: 
-        return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
+    if gatunek == "Kot":
+        if "cała" in p:
+            return "Macica niepowiększona, na wysokości rogów śr. do ok. 4,6 mm, na wysokości szyjki macicy do ok. 6,3 mm, na wysokości trzonu narządu do ok. 5 mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, lewy wielkości ok. 8 mm x 5 mm, prawy ok. 9 mm x 5,5 mm, normoechogenne, bez uchwytnych zmian guzowatych, bez uchwytnych zmian w budowie."
+        else:
+            return "" # Dla innych kotów zostawiamy puste
+    else: # Pies
+        if "niekastrowany" in p: 
+            return "Gruczoł krokowy niepowiększony, wielkości ok. 2,6 cm x 2,5 cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia."
+        elif "samiec kastrowany" in p: 
+            return "Gruczoł krokowy obkurczony, zanikowy, wielkości ok. 1 cm x 0,7 cm, miąższ hipoechogenny, jednorodny, bez zmian w budowie."
+        elif "cała" in p: 
+            return "Macica niepowiększona, na wysokości rogów śr. do ok. 4,6 mm, na wysokości szyjki macicy do ok. 6,3 mm, na wysokości trzonu narządu do ok. 5 mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, lewy wielkości ok. 8 mm x 5 mm, prawy ok. 9 mm x 5,5 mm, normoechogenne, bez uchwytnych zmian guzowatych, bez uchwytnych zmian w budowie."
+        else: 
+            return "Kikut macicy, loże po jajnikach bez uchwytnych zmian."
 
 def get_templates(gatunek):
     if gatunek == "Kot":
@@ -235,11 +241,17 @@ def get_default_full_report(nadn_val="4,3"):
 
     sections = []
     
-    if is_samiec and is_niekastrowany:
+    # Jądra dla psa nad pęcherzem
+    if is_samiec and is_niekastrowany and g_akt == "Pies":
         sections.append("Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie.")
         
     sections.append(szablony['pecherz'].format(pech=def_pech))
-    sections.append(get_rodne_text(plec_akt))
+    
+    # Układ rozrodczy (tylko tam, gdzie jest potrzebny)
+    rodz_text = get_rodne_text(plec_akt, g_akt)
+    if rodz_text:
+        sections.append(rodz_text)
+        
     sections.append(szablony['nerki'].format(nerki=def_nerki))
     sections.append(szablony['nadnercza'].format(nadn=def_nadn))
     sections.append(szablony['sledziona'].format(spl=def_spl))
@@ -317,8 +329,12 @@ if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
                 if raw_transcript and len(raw_transcript) > 2:
                     with st.spinner("🩺 KROK 2/2: Generowanie pełnych akapitów opisu USG..."):
                         try:
-                            sz_rozrodczy = get_rodne_text(plec_akt)
-                            ai_jadra = "Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie." if (is_samiec and is_niekastrowany) else ""
+                            sz_rozrodczy = get_rodne_text(plec_akt, g_akt)
+                            ai_jadra = "Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie." if (is_samiec and is_niekastrowany and g_akt == "Pies") else ""
+                            
+                            jadra_prompt = f'OPIS JĄDER (Osobny akapit przed pęcherzem): "{ai_jadra}"\n' if ai_jadra else ''
+                            rozrod_prompt = f'OPIS ROZRODU / PROSTATY: "{sz_rozrodczy}"\n' if sz_rozrodczy else 'BRAK OPISU UKŁADU ROZRODCZEGO DLA TEGO PACJENTA (Nie generuj go).\n'
+
                             ai_pech = szablony['pecherz'].replace('{pech}', '[WYMIAR]')
                             ai_ner = szablony['nerki'].replace('{nerki}', 'około [DODAJ WYMIARY]')
                             ai_nadn = szablony['nadnercza'].replace('{nadn}', '[WYMIAR]')
@@ -330,10 +346,9 @@ if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
                             
                             system_prompt = f"""
 Jesteś profesjonalnym edytorem raportów USG weterynaryjnego. Przekształć notatkę w PEŁNE AKAPITY MEDYCZNE wg wzorców.
-GATUNEK: {gat}
+GATUNEK: {g_akt}
 KRYTYCZNA ZASADA PŁCI (Pacjent: {plec_akt}):
-{(ai_jadra + '\n') if ai_jadra else ''}OPIS ROZRODU / PROSTATY: "{sz_rozrodczy}"
-
+{jadra_prompt}{rozrod_prompt}
 MATRYCE AKAPITÓW DLA POZOSTAŁYCH NARZĄDÓW:
 PĘCHERZ MOCZOWY: "{ai_pech}"
 NERKI: "{ai_ner}"
@@ -452,7 +467,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         with col_d2:
             chk_zmiana = st.checkbox("Dodaj opis: Zmiana podskórna (okolica pośladka)")
 
-    # Logika patologii pęcherza (uwzględniająca wymiar wpisany przez usera)
+    # Logika patologii pęcherza
     if sel_pecherz == "Słabo wypełniony pęcherz":
         val_p = user_pech if user_pech else "4,4"
         txt_pech = f"Pęcherz moczowy słabo wypełniony, prawidłowego kształtu, ściana gr. ok. {val_p} mm, jednak trudna do pełnej oceny ze względu na obkurczenie, wtórne do słabego wypełnienia pęcherza, mocz aechogenny, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
@@ -478,9 +493,9 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         val_p = user_pech if user_pech else "1,1"
         txt_pech = szablony['pecherz'].format(pech=val_p)
 
-    # Jądra nad pęcherzem (dla niekastrowanego samca)
+    # Jądra nad pęcherzem (Tylko dla Psa niekastrowanego)
     jadra_sekcja = ""
-    if is_samiec and is_niekastrowany:
+    if is_samiec and is_niekastrowany and g_akt == "Pies":
         if sel_prostata == "Wnętrostwo":
             jadra_sekcja = "Lewe jądro w worku mosznowym, prawidłowej wielkości i kształtu, ok. 2,2 cm x 1,4 cm, miąższ normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrze bez uchwytnych zmian w budowie. Prawe jądro wnętrowskie, zlokalizowane w kanale pachwinowym, w około 1/3 doogonowej części jego długości/ na terenie jamy brzusznej, doogonowo od nerki lewej i śledziony, w sąsiedztwie rozwidlenia aorty. Jądro nieco pomniejszone, wielkości ok. 1,3 cm x 2,2 cm, prawidłowego kształtu, miąższ o nieco obniżonej echogeniczności, jednorodny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrze bez zmian."
         elif sel_prostata == "Guz jądra":
@@ -488,21 +503,34 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         else:
             jadra_sekcja = "Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie."
 
-    # Układ rozrodczy / Prostata
-    if is_samiec:
-        if sel_prostata == "Przerost prostaty":
-            txt_rodne = "Gruczoł krokowy powiększony, wielkości ok. 4,3 cm x 3,4 cm, miąższ hiperechogenny, nieco niejednorodny, z licznymi, drobnymi torbielami prostymi, śr. do ok. 3 mm, bez uchwytnych zmian guzowatych, bez cech zapalenia ostrego."
+    # Układ rozrodczy / Prostata (Zasada kotów i psów)
+    txt_rodne = ""
+    if g_akt == "Kot":
+        if not is_samiec and "cała" in plec_akt.lower():
+            if sel_macica == "Macica - ruja":
+                txt_rodne = "Macica lekko rozpulchniona, na wysokości rogów śr. do ok. 5,5 mm, na wysokości szyjki macicy do ok. 10 mm, na wysokości trzonu narządu do ok. 7 mm, ściana lekko rozpulchniona do ok. 2,4 mm, prawidłowej budowy, warstwa śluzowa o nieco obniżonej echogeniczności, brak cech ropnego zapalenia w momencie badania. Jajniki lekko powiększone, wielkości ok. 14 mm x 7 mm, normoechogenne, w miąższu widoczne pojedyncze, hipoechogenne obszary, śr. do ok. 2 mm, odpowiadające prawidłowym komórkom jajnikowym, brak zmian guzowatych, brak uchwytnych zmian patologicznych."
+            elif sel_macica == "Ropne zapalenie macicy":
+                txt_rodne = "Macica powiększona, na wysokości rogów śr. do ok. 10 mm, na wysokości szyjki macicy do ok. 10 mm, na wysokości trzonu narządu do ok. 7 mm. Ściana prawidłowej grubości, o lekko nieregularnej powierzchni warstwy śluzowej, w świetle macicy zwiększona ilość aechogennego płynu. Jajniki niepowiększone, wielkości ok. 8 mm x 5 mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
+            elif sel_macica == "Śluzo/wodomacicze":
+                txt_rodne = "Macica powiększona, na wysokości rogów śr. ok. 10 mm, na wysokości szyjki macicy ok. 10 mm, na wysokości trzonu narządu ok. 7 mm. Ściana lekko pogrubiała do ok. 2,5 mm, o lekko podwyższonej echogeniczności, w świetle macicy nieco zwiększona ilość aechogennego płynu. Jajniki niepowiększone, wielkości ok. 8 mm x 5 mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
+            else:
+                txt_rodne = get_rodne_text(plec_akt, g_akt)
+        # Else: kot kastrowany lub kocur = txt_rodne zostaje ""
+    else: # Pies
+        if is_samiec:
+            if sel_prostata == "Przerost prostaty":
+                txt_rodne = "Gruczoł krokowy powiększony, wielkości ok. 4,3 cm x 3,4 cm, miąższ hiperechogenny, nieco niejednorodny, z licznymi, drobnymi torbielami prostymi, śr. do ok. 3 mm, bez uchwytnych zmian guzowatych, bez cech zapalenia ostrego."
+            else:
+                txt_rodne = get_rodne_text(plec_akt, g_akt)
         else:
-            txt_rodne = get_rodne_text(plec_akt)
-    else:
-        if sel_macica == "Macica - ruja":
-            txt_rodne = "Macica lekko rozpulchniona, na wysokości rogów śr. do ok. 5,5 mm, na wysokości szyjki macicy do ok. 10 mm, na wysokości trzonu narządu do ok. 7 mm, ściana lekko rozpulchniona do ok. 2,4 mm, prawidłowej budowy, warstwa śluzowa o nieco obniżonej echogeniczności, brak cech ropnego zapalenia w momencie badania. Jajniki lekko powiększone, wielkości ok. 14 mm x 7 mm, normoechogenne, w miąższu widoczne pojedyncze, hipoechogenne obszary, śr. do ok. 2 mm, odpowiadające prawidłowym komórkom jajnikowym, brak zmian guzowatych, brak uchwytnych zmian patologicznych."
-        elif sel_macica == "Ropne zapalenie macicy":
-            txt_rodne = "Macica powiększona, na wysokości rogów śr. do ok. 10 mm, na wysokości szyjki macicy do ok. 10 mm, na wysokości trzonu narządu do ok. 7 mm. Ściana prawidłowej grubości, o lekko nieregularnej powierzchni warstwy śluzowej, w świetle macicy zwiększona ilość aechogennego płynu. Jajniki niepowiększone, wielkości ok. 8 mm x 5 mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
-        elif sel_macica == "Śluzo/wodomacicze":
-            txt_rodne = "Macica powiększona, na wysokości rogów śr. ok. 10 mm, na wysokości szyjki macicy ok. 10 mm, na wysokości trzonu narządu ok. 7 mm. Ściana lekko pogrubiała do ok. 2,5 mm, o lekko podwyższonej echogeniczności, w świetle macicy nieco zwiększona ilość aechogennego płynu. Jajniki niepowiększone, wielkości ok. 8 mm x 5 mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
-        else:
-            txt_rodne = get_rodne_text(plec_akt)
+            if sel_macica == "Macica - ruja":
+                txt_rodne = "Macica lekko rozpulchniona, na wysokości rogów śr. do ok. 5,5 mm, na wysokości szyjki macicy do ok. 10 mm, na wysokości trzonu narządu do ok. 7 mm, ściana lekko rozpulchniona do ok. 2,4 mm, prawidłowej budowy, warstwa śluzowa o nieco obniżonej echogeniczności, brak cech ropnego zapalenia w momencie badania. Jajniki lekko powiększone, wielkości ok. 14 mm x 7 mm, normoechogenne, w miąższu widoczne pojedyncze, hipoechogenne obszary, śr. do ok. 2 mm, odpowiadające prawidłowym komórkom jajnikowym, brak zmian guzowatych, brak uchwytnych zmian patologicznych."
+            elif sel_macica == "Ropne zapalenie macicy":
+                txt_rodne = "Macica powiększona, na wysokości rogów śr. do ok. 10 mm, na wysokości szyjki macicy do ok. 10 mm, na wysokości trzonu narządu do ok. 7 mm. Ściana prawidłowej grubości, o lekko nieregularnej powierzchni warstwy śluzowej, w świetle macicy zwiększona ilość aechogennego płynu. Jajniki niepowiększone, wielkości ok. 8 mm x 5 mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
+            elif sel_macica == "Śluzo/wodomacicze":
+                txt_rodne = "Macica powiększona, na wysokości rogów śr. ok. 10 mm, na wysokości szyjki macicy ok. 10 mm, na wysokości trzonu narządu ok. 7 mm. Ściana lekko pogrubiała do ok. 2,5 mm, o lekko podwyższonej echogeniczności, w świetle macicy nieco zwiększona ilość aechogennego płynu. Jajniki niepowiększone, wielkości ok. 8 mm x 5 mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
+            else:
+                txt_rodne = get_rodne_text(plec_akt, g_akt)
 
     txt_ner = szablony['nerki'].format(nerki=v_nerki)
     txt_nadn = szablony['nadnercza'].format(nadn=v_nadn)
@@ -512,11 +540,12 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     txt_trz = szablony['trzustka'].format(trz=v_trz)
 
     report_sections = []
-    if jadra_sekcja:
-        report_sections.append(jadra_sekcja)
+    
+    if jadra_sekcja: report_sections.append(jadra_sekcja)
+    report_sections.append(txt_pech)
+    if txt_rodne: report_sections.append(txt_rodne)
+    
     report_sections.extend([
-        txt_pech, 
-        txt_rodne, 
         txt_ner,
         txt_nadn,
         txt_spl, 
@@ -567,11 +596,15 @@ elif tryb == "📝 TRYB 3: Wybór Zmian":
     gat = st.session_state["gatunek_pacjenta"]
 
     organs_defaults = {}
-    if is_samiec and is_niekastrowany:
+    if is_samiec and is_niekastrowany and gat == "Pies":
         organs_defaults["Jądra"] = "Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie."
     
     organs_defaults["Pęcherz moczowy"] = szablony['pecherz'].format(pech="1,1")
-    organs_defaults["Układ rozrodczy"] = get_rodne_text(plec_akt)
+    
+    rodz_text = get_rodne_text(plec_akt, gat)
+    if rodz_text:
+        organs_defaults["Układ rozrodczy"] = rodz_text
+        
     organs_defaults["Nerki"] = szablony['nerki'].format(nerki="około 3,2 cm x 1,7 cm")
     organs_defaults["Nadnercza"] = szablony['nadnercza'].format(nadn="4,3")
     organs_defaults["Śledziona"] = szablony['sledziona'].format(spl="1,4")
