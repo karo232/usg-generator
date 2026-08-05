@@ -191,34 +191,40 @@ def get_templates(gatunek):
         }
 
 # ==========================================
-# SIDEBAR: USTAWIENIA GÓRNE
+# SIDEBAR: USTAWIENIA GÓRNE (ZABEZPIECZONE)
 # ==========================================
 with st.sidebar:
     st.markdown("<h3 style='color: #135c7e; font-weight: 700; margin-bottom: 10px;'>⚙️ Konfiguracja Pacjenta</h3>", unsafe_allow_html=True)
     
+    obecny_gatunek = st.session_state.get("gatunek_pacjenta", "Pies")
+    
     with st.container(border=True):
         st.markdown("<div style='font-weight: 600; color: #135c7e; margin-bottom: 5px; font-size: 15px;'>Gatunek:</div>", unsafe_allow_html=True)
-        gatunek = st.selectbox(
+        wybrany_gatunek = st.selectbox(
             "Gatunek", 
             ["Pies", "Kot"],
-            key="gatunek_pacjenta",
+            index=0 if obecny_gatunek == "Pies" else 1,
             label_visibility="collapsed"
         )
+        st.session_state["gatunek_pacjenta"] = wybrany_gatunek
         
-    plec_opcje = ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"] if gatunek == "Pies" else ["Kotka (kastrowana / kikut)", "Kotka (cała)", "Kocur (samiec niekastrowany)", "Kocur (samiec kastrowany)"]
+    plec_opcje = ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"] if wybrany_gatunek == "Pies" else ["Kotka (kastrowana / kikut)", "Kotka (cała)", "Kocur (samiec niekastrowany)", "Kocur (samiec kastrowany)"]
     
-    # NAPRAWA BŁĘDU (Zabezpieczenie przed niewłaściwą opcją przy zmianie gatunku)
-    if st.session_state.get("plec_pacjenta") not in plec_opcje:
-        st.session_state["plec_pacjenta"] = plec_opcje[0]
+    obecna_plec = st.session_state.get("plec_pacjenta", plec_opcje[0])
+    # Zabezpieczenie przed niewłaściwą opcją
+    if obecna_plec not in plec_opcje:
+        obecna_plec = plec_opcje[0]
+        st.session_state["plec_pacjenta"] = obecna_plec
         
     with st.container(border=True):
         st.markdown("<div style='font-weight: 600; color: #135c7e; margin-bottom: 5px; font-size: 15px;'>Płeć i stan fizjologiczny:</div>", unsafe_allow_html=True)
-        plec = st.selectbox(
+        wybrana_plec = st.selectbox(
             "Płeć", 
             plec_opcje,
-            key="plec_pacjenta",
+            index=plec_opcje.index(obecna_plec),
             label_visibility="collapsed"
         )
+        st.session_state["plec_pacjenta"] = wybrana_plec
         
     with st.container(border=True):
         dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
