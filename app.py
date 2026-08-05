@@ -444,6 +444,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     pat_pecherzyk_options = ["Prawidłowy (Norma)", "Ostre zapalenie pęcherzyka żółciowego", "Przewlekłe zapalenie pęcherzyka żółciowego", "Błotko w pęcherzyku żółciowym", "Mineralizacje w pęcherzyku żółciowym", "Mineralizacje w pęcherzyku żółciowym i drogach żółciowych", "Poszerzone drogi żółciowe", "Polipy w pęcherzyku żółciowym"]
     pat_trzustka_options = ["Prawidłowa (Norma)", "Ostre zapalenie trzustki", "Przebudowa przewlekła", "Przebudowa przewlekła z poszerzonym przewodem trzustkowym"]
     pat_pokarmowy_options = ["Prawidłowy (Norma)", "Ostre zapalenie żołądka", "Refluks", "Przewlekłe zapalenie żołądka", "Ostre zapalenie jelit", "Zmiany w typie zaburzeń trawienia", "IBD", "Przewlekłe zapalenie jelit"]
+    pat_skorne_options = ["Brak (Pomiń w opisie)", "Kłos", "Zmiana podskórna"]
 
     # ================= WYŚWIETLANIE LIST W KOLUMNACH =================
     with st.container(border=True):
@@ -467,13 +468,8 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
         col_pk1, col_pk2 = st.columns(2)
         with col_pk1: sel_pokarmowy = st.selectbox("Przewód pokarmowy", pat_pokarmowy_options)
+        with col_pk2: sel_skora = st.selectbox("Zmiany skórne", pat_skorne_options)
             
-        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
-        st.markdown("<h5 style='color: #135c7e; margin-bottom: 10px;'>Zmiany skórne</h5>", unsafe_allow_html=True)
-        col_d1, col_d2 = st.columns(2)
-        with col_d1: chk_klos = st.checkbox("Kłos (kończyna międzypalcowa)")
-        with col_d2: chk_zmiana = st.checkbox("Zmiana podskórna (okolica pośladka)")
-
     # ================= GENEROWANIE TEKSTÓW Z BAZY =================
     
     # 1. PĘCHERZ
@@ -621,9 +617,10 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     if dodaj_tarczyce: 
         report_sections.append("TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych.")
 
-    if chk_klos:
+    # 10. ZMIANY SKÓRNE (na samym końcu opisu)
+    if sel_skora == "Kłos":
         report_sections.append("Kłos: W badaniu USG okolicy międzypalcowej, pomiędzy palcem III i IV, prawej kończyny miednicznej obecny znaczny obrzęk tkanki podskórnej, pomiędzy tkankami obecna niewielka ilość wolnego płynu. W tkance podskórnej, od strony grzbietowej, w miejscu największego obrzęku, obecna podłużna, hiperechogenna struktura, dł. ok. 2 cm, na głębokości ok. 4 mm od skóry. Podejrzenie ciała obcego.")
-    if chk_zmiana:
+    elif sel_skora == "Zmiana podskórna":
         report_sections.append("Zmiana podskórna: Obecność zmiany podskórnej po stronie prawej w okolicy pośladka. Zmiana dobrze odgraniczona, owalna, dosyć regularnego kształtu, wielkości ok. 3,3 cm x 1,3 cm, jednorodna, w przewadze hipoechogenna względem otaczających tkanek, bez komponenty płynowej, bez cech hiperwaskularyzacji, nie powodująca efektu masy na okoliczne tkanki.")
 
     mode2_final_report = "\n\n".join(report_sections)
