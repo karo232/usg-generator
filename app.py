@@ -270,11 +270,11 @@ def get_default_full_report(nadn_val="4,3"):
 
 base_default_report = get_default_full_report()
 
-# Aktualizacja bazy (dla Trybu 1), jeśli zmienił się gatunek
-if base_default_report != st.session_state.get("last_mode1_hash", ""):
+# PILNUJEMY, ABY DOLNE OKNO NIGDY NIE BYŁO PUSTE NA STARCIE LUB PO ZMIANIE GATUNKU
+if base_default_report != st.session_state.get("last_mode1_hash", "") or not st.session_state.get("full_report_mode1"):
     st.session_state["full_report_mode1"] = base_default_report
     st.session_state["last_mode1_hash"] = base_default_report
-    st.session_state["editable_report_area"] = "" # Czyścimy pole dyktowania po zmianie gatunku
+    st.session_state["editable_report_area"] = "" 
 
 # ==========================================
 # WYBÓR TRYBU PRACY 
@@ -336,7 +336,6 @@ if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
                 if raw_transcript and len(raw_transcript) > 2:
                     with st.spinner("🩺 KROK 2/2: Generowanie zredagowanego fragmentu..."):
                         try:
-                            # Nowy rygorystyczny prompt zakazujący zmyślania narządów
                             system_prompt = f"""
                             Jesteś profesjonalnym edytorem raportów USG weterynaryjnego.
                             GATUNEK PACJENTA: {g_akt}
@@ -352,14 +351,12 @@ if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
                             """
                             response = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": f"Podyktowane:\n{raw_transcript}"}], temperature=0.0)
                             
+                            # Aktualizujemy tekst, NIE WZBUDZAJĄC st.rerun() aby nie zabić stanu dolnego okienka
                             st.session_state["editable_report_area"] = response.choices[0].message.content.strip()
-                            st.session_state["ai_success_msg"] = "✅ Fragment wygenerowany pomyślnie! Wykonaj poprawki, skopiuj go i zastąp odpowiedni fragment w schemacie na dole."
-                            st.rerun() 
-
+                            st.success("✅ Fragment wygenerowany pomyślnie! Wykonaj ewentualne poprawki, skopiuj go i zastąp odpowiedni tekst w schemacie na dole.")
                         except Exception as e:
                             st.session_state["editable_report_area"] = raw_transcript
                             st.warning(f"⚠️ Błąd generatora: {e}")
-                            st.rerun()
                 else: 
                     st.warning("⚠️ Nie usłyszałem wyraźnie tekstu. Spróbuj nagrać jeszcze raz.")
             else: 
@@ -575,7 +572,6 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     with c_btn1:
         if st.button("🔄 Odśwież widok", use_container_width=True):
             st.session_state["editable_report_area_2"] = mode2_final_report
-            st.rerun()
     with c_btn2:
         if st.button("💾 Zapisz ten opis do historii", type="primary", key="save_btn_tab2", use_container_width=True):
             add_to_history(st.session_state.get("editable_report_area_2", mode2_final_report))
