@@ -336,24 +336,27 @@ if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
                 if raw_transcript and len(raw_transcript) > 2:
                     with st.spinner("🩺 KROK 2/2: Generowanie zredagowanego fragmentu..."):
                         try:
+                            # TWARDE ZASADY DLA AI - ZERO ZMIAN W ZDANIACH LEKARZA
                             system_prompt = f"""
                             Jesteś profesjonalnym edytorem raportów USG weterynaryjnego.
                             GATUNEK PACJENTA: {g_akt}
                             
                             ZADANIE:
-                            Lekarz podyktował opis patologii lub wymiarów dla jednego lub kilku konkretnych narządów. 
-                            Twoim zadaniem jest przekształcić tę notatkę w spójny, medyczny tekst w stylu opisu USG.
+                            Lekarz podyktował opis patologii lub wymiarów dla konkretnych narządów. Twoim zadaniem jest poprawienie interpunkcji, ortografii i błędów z rozpoznawania mowy, ALE przy zachowaniu DOKŁADNEGO brzmienia i słownictwa lekarza.
                             
-                            KRYTYCZNA ZASADA:
-                            Zredaguj i opisz TYLKO I WYŁĄCZNIE te narządy, o których lekarz bezpośrednio wspomina w notatce.
-                            Kategorycznie ZABRANIA SIĘ generowania opisu dla pozostałych, zdrowych narządów, o których nie ma mowy w nagraniu.
+                            KRYTYCZNE ZASADY:
+                            1. STYL MEDYCZNY (RÓWNOWAŻNIKI ZDAŃ): Opisy weterynaryjne używają równoważników zdań. KATEGORYCZNIE ZABRANIA SIĘ dodawania słów łączących takich jak: "jest", "wykazuje", "posiada", "charakteryzuje się", "znajduje się". 
+                               ZŁE: "Pęcherz moczowy jest dobrze wypełniony i wykazuje prawidłową budowę."
+                               DOBRE: "Pęcherz moczowy dobrze wypełniony, prawidłowej budowy."
+                            2. WIERNOŚĆ: Jeśli lekarz podyktował gotowe, poprawnie brzmiący fragment (np. "Pęcherz moczowy dobrze wypełniony, o prawidłowym kształcie, cienkościenny prawidłowej budowy"), oddaj go w formacie 1:1, dodając jedynie brakujące przecinki lub kropki.
+                            3. Zredaguj i opisz TYLKO I WYŁĄCZNIE te narządy, o których lekarz bezpośrednio wspomina. Nie wymyślaj opisów innych narządów.
+                            
                             Zwróć bezpośrednio gotowy fragment tekstu.
                             """
                             response = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": f"Podyktowane:\n{raw_transcript}"}], temperature=0.0)
                             
-                            # Aktualizujemy tekst, NIE WZBUDZAJĄC st.rerun() aby nie zabić stanu dolnego okienka
                             st.session_state["editable_report_area"] = response.choices[0].message.content.strip()
-                            st.success("✅ Fragment wygenerowany pomyślnie! Wykonaj ewentualne poprawki, skopiuj go i zastąp odpowiedni tekst w schemacie na dole.")
+                            st.success("✅ Fragment wygenerowany pomyślnie! Skopiuj go i zastąp odpowiedni tekst w schemacie na dole.")
                         except Exception as e:
                             st.session_state["editable_report_area"] = raw_transcript
                             st.warning(f"⚠️ Błąd generatora: {e}")
