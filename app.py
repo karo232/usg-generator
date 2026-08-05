@@ -183,25 +183,12 @@ def get_templates(gatunek):
             "nadnercza": "Nadnercza prawidłowej wielkości i kształtu, grubości około {nadn} mm, bez uchwytnych zmian w budowie.",
             "sledziona": "Śledziona prawidłowej wielkości, grubości około {spl} cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona.",
             "zoladek": "Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości, pomiędzy fałdami do około {zol} mm, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego.",
-            "jelita": "Ściana dwunastnicy niepogrubiała, gr. ok. {dwu} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość płynnej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa. Światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka zachowana. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, gr. do ok. {okr} mm, okrężnica wypełniona uformowanymi masami kałowymi.",
+            "jelita": "Ściana dwunastnicy niepogrubiała, gr. ok. {dwu} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość płynnej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa. Światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka zachowana. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, gr. do ok. {okr} mm, okrężnica wypeł্নে masami kałowymi.",
             "watroba": "Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez uchwytnych zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. {pech_zol} mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie.",
             "trzustka": "Trzustka prawidłowej wielkości i kształtu, gr. ok. {trz} mm w płacie prawym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony.",
             "wezly": "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie.",
             "plyn": "Brak wolnego płynu w jamie brzusznej."
         }
-
-
-# ==========================================
-# FUNKCJA AKTUALIZUJĄCA PŁEĆ (Callback)
-# ==========================================
-def update_plec_options():
-    # Kiedy użytkownik zmieni gatunek, resetujemy płeć na prawidłową
-    g = st.session_state["gatunek_pacjenta"]
-    if g == "Pies":
-        st.session_state["plec_pacjenta"] = "Suka (kastrowana / kikut)"
-    else:
-        st.session_state["plec_pacjenta"] = "Kotka (kastrowana / kikut)"
-
 
 # ==========================================
 # SIDEBAR: USTAWIENIA GÓRNE
@@ -211,21 +198,22 @@ with st.sidebar:
     
     with st.container(border=True):
         st.markdown("<div style='font-weight: 600; color: #135c7e; margin-bottom: 5px; font-size: 15px;'>Gatunek:</div>", unsafe_allow_html=True)
-        
-        st.selectbox(
+        gatunek = st.selectbox(
             "Gatunek", 
             ["Pies", "Kot"],
             key="gatunek_pacjenta",
-            on_change=update_plec_options,
             label_visibility="collapsed"
         )
         
-    g_akt = st.session_state["gatunek_pacjenta"]
-    plec_opcje = ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"] if g_akt == "Pies" else ["Kotka (kastrowana / kikut)", "Kotka (cała)", "Kocur (samiec niekastrowany)", "Kocur (samiec kastrowany)"]
+    plec_opcje = ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"] if gatunek == "Pies" else ["Kotka (kastrowana / kikut)", "Kotka (cała)", "Kocur (samiec niekastrowany)", "Kocur (samiec kastrowany)"]
     
+    # NAPRAWA BŁĘDU (Zabezpieczenie przed niewłaściwą opcją przy zmianie gatunku)
+    if st.session_state.get("plec_pacjenta") not in plec_opcje:
+        st.session_state["plec_pacjenta"] = plec_opcje[0]
+        
     with st.container(border=True):
         st.markdown("<div style='font-weight: 600; color: #135c7e; margin-bottom: 5px; font-size: 15px;'>Płeć i stan fizjologiczny:</div>", unsafe_allow_html=True)
-        st.selectbox(
+        plec = st.selectbox(
             "Płeć", 
             plec_opcje,
             key="plec_pacjenta",
@@ -237,7 +225,8 @@ with st.sidebar:
 
 
 # Pobranie aktywnych szablonów narządów i stanu płci
-szablony = get_templates(g_akt)
+szablony = get_templates(st.session_state["gatunek_pacjenta"])
+g_akt = st.session_state["gatunek_pacjenta"]
 plec_akt = st.session_state["plec_pacjenta"]
 is_samiec = "samiec" in plec_akt.lower() or "kocur" in plec_akt.lower()
 is_niekastrowany = "niekastrowany" in plec_akt.lower()
@@ -306,6 +295,11 @@ st.markdown("<br>", unsafe_allow_html=True)
 if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
     st.subheader("Wypowiedz obserwacje, AI zaktualizuje prawidłowy raport")
     st.caption("Poniżej znajduje się domyślny, zdrowy opis pacjenta. Podyktuj zmiany, a AI sprytnie nadpisze tylko te narządy, o których wspomnisz.")
+
+    # Wyświetlenie komunikatu o sukcesie (jeśli został zachowany przed rerunem)
+    if "ai_success_msg" in st.session_state:
+        st.success(st.session_state["ai_success_msg"])
+        del st.session_state["ai_success_msg"]
 
     if base_default_report != st.session_state.get("last_mode1_hash", ""):
         st.session_state["editable_report_area"] = base_default_report
@@ -379,13 +373,22 @@ WOLNY PŁYN: "{szablony['plyn']}"
 ZASADY WYLOTOWE: Oddzielaj narządy nową linią. Zwracaj WYŁĄCZNIE czysty tekst opisu medycznego.
 """
                             response = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": f"Podyktowane:\n{raw_transcript}"}], temperature=0.0)
+                            
+                            # Odświeżenie pola tekstowego natychmiastowo poprzez st.rerun()
                             st.session_state["editable_report_area"] = response.choices[0].message.content.strip()
-                            st.success("✅ Wzorcowy raport medyczny wygenerowany!")
+                            st.session_state["ai_success_msg"] = "✅ Wzorcowy raport medyczny wygenerowany pomyślnie!"
+                            st.rerun() 
+
                         except Exception as e:
                             st.session_state["editable_report_area"] = raw_transcript
                             st.warning(f"⚠️ Błąd generatora: {e}")
-            else: st.error("⚠️ Brak aktywnego klienta OpenAI API.")
-    else: st.session_state["processed_audio_size"] = 0 
+                            st.rerun()
+                else: 
+                    st.warning("⚠️ Nie usłyszałem wyraźnie tekstu. Spróbuj nagrać jeszcze raz.")
+            else: 
+                st.error("⚠️ Brak aktywnego klienta OpenAI API. Sprawdź, czy wprowadzono poprawny klucz w ustawieniach.")
+    else: 
+        st.session_state["processed_audio_size"] = 0 
 
     st.markdown("---")
     
@@ -422,6 +425,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
             dim_trzustka = st.text_input("Trzustka gr. (mm)", placeholder="np. 8")
             dim_pecherzyk = st.text_input("Pęch. żółciowy ściana (mm)", placeholder="np. 1.1")
 
+    gat = st.session_state["gatunek_pacjenta"]
     user_pech = dim_pecherz.strip()
     
     v_nl = dim_nerka_l.strip()
@@ -433,11 +437,11 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         
     v_nadn = dim_nadnercza.strip() if dim_nadnercza.strip() else "4,3"
     v_spl = dim_spleen.strip() if dim_spleen.strip() else "1,4"
-    v_zol = dim_zoladek.strip() if dim_zoladek.strip() else ("2,1" if g_akt == "Kot" else "2,9")
+    v_zol = dim_zoladek.strip() if dim_zoladek.strip() else ("2,1" if gat == "Kot" else "2,9")
     v_dwu = dim_dwunastnica.strip() if dim_dwunastnica.strip() else "2,8"
     v_okr = dim_okresnica.strip() if dim_okresnica.strip() else "1,3"
-    v_trz = dim_trzustka.strip() if dim_trzustka.strip() else ("6,5" if g_akt == "Kot" else "8")
-    v_pech_zol = dim_pecherzyk.strip() if dim_pecherzyk.strip() else ("1" if g_akt == "Kot" else "1,1")
+    v_trz = dim_trzustka.strip() if dim_trzustka.strip() else ("6,5" if gat == "Kot" else "8")
+    v_pech_zol = dim_pecherzyk.strip() if dim_pecherzyk.strip() else ("1" if gat == "Kot" else "1,1")
 
     st.markdown("### 🧩 Baza Patologii i Odchyleń")
 
@@ -607,24 +611,25 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
 elif tryb == "📝 TRYB 3: Wybór Zmian":
     st.subheader("Zaznacz i nadpisz narządy z patologią")
     st.caption("Niezaznaczone narządy zostaną uzupełnione jako zdrowa norma (odpowiednia dla gatunku). Wybierz narząd, aby otworzyć pole z tekstem do modyfikacji.")
-    
+    gat = st.session_state["gatunek_pacjenta"]
+
     organs_defaults = {}
-    if is_samiec and is_niekastrowany and g_akt == "Pies":
+    if is_samiec and is_niekastrowany and gat == "Pies":
         organs_defaults["Jądra"] = "Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie."
     
     organs_defaults["Pęcherz moczowy"] = szablony['pecherz'].format(pech="1,1")
     
-    rodz_text = get_rodne_text(plec_akt, g_akt)
+    rodz_text = get_rodne_text(plec_akt, gat)
     if rodz_text:
         organs_defaults["Układ rozrodczy"] = rodz_text
         
     organs_defaults["Nerki"] = szablony['nerki'].format(nerki="około 3,2 cm x 1,7 cm")
     organs_defaults["Nadnercza"] = szablony['nadnercza'].format(nadn="4,3")
     organs_defaults["Śledziona"] = szablony['sledziona'].format(spl="1,4")
-    organs_defaults["Żołądek"] = szablony['zoladek'].format(zol=("2,1" if g_akt == "Kot" else "2,9"))
+    organs_defaults["Żołądek"] = szablony['zoladek'].format(zol=("2,1" if gat == "Kot" else "2,9"))
     organs_defaults["Jelita i Dwunastnica"] = szablony['jelita'].format(dwu="2,8", okr="1,3")
-    organs_defaults["Wątroba i Pęcherzyk żółciowy"] = szablony['watroba'].format(pech_zol=("1" if g_akt == "Kot" else "1,1"))
-    organs_defaults["Trzustka"] = szablony['trzustka'].format(trz=("6,5" if g_akt == "Kot" else "8"))
+    organs_defaults["Wątroba i Pęcherzyk żółciowy"] = szablony['watroba'].format(pech_zol=("1" if gat == "Kot" else "1,1"))
+    organs_defaults["Trzustka"] = szablony['trzustka'].format(trz=("6,5" if gat == "Kot" else "8"))
     organs_defaults["Węzły chłonne"] = szablony['wezly']
     organs_defaults["Wolny płyn"] = szablony['plyn']
 
