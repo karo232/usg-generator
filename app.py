@@ -19,9 +19,11 @@ st.set_page_config(
 
 # === INICJALIZACJA SESSION STATE ===
 if "editable_report_area" not in st.session_state: st.session_state["editable_report_area"] = ""
+if "full_report_mode1" not in st.session_state: st.session_state["full_report_mode1"] = ""
 if "reports_history" not in st.session_state: st.session_state["reports_history"] = []
 if "gatunek_pacjenta" not in st.session_state: st.session_state["gatunek_pacjenta"] = "Pies"
 if "plec_pacjenta" not in st.session_state: st.session_state["plec_pacjenta"] = "Suka (kastrowana / kikut)"
+if "last_mode1_hash" not in st.session_state: st.session_state["last_mode1_hash"] = ""
 if "last_mode2_hash" not in st.session_state: st.session_state["last_mode2_hash"] = ""
 if "last_mode3_hash" not in st.session_state: st.session_state["last_mode3_hash"] = ""
 if "processed_audio_size" not in st.session_state: st.session_state["processed_audio_size"] = 0
@@ -150,7 +152,7 @@ def get_rodne_text(plec_wybor, gatunek):
         if "cała" in p:
             return "Macica niepowiększona, na wysokości rogów śr. do ok. 4,6 mm, na wysokości szyjki macicy do ok. 6,3 mm, na wysokości trzonu narządu do ok. 5 mm. Ściana prawidłowej grubości, prawidłowej budowy, bez uchwytnych zmian patologicznych, brak cech ropnego zapalenia w momencie badania. Jajniki niepowiększone, lewy wielkości ok. 8 mm x 5 mm, prawy ok. 9 mm x 5,5 mm, normoechogenne, bez uchwytnych zmian guzowatych, bez uchwytnych zmian w budowie."
         else:
-            return "" # Dla innych kotów zostawiamy puste
+            return "" 
     else: # Pies
         if "niekastrowany" in p: 
             return "Gruczoł krokowy niepowiększony, wielkości ok. 2,6 cm x 2,5 cm, miąższ normoechogenny, jednorodny, bez zmian guzowatych, bez cech zapalenia."
@@ -228,6 +230,52 @@ plec_akt = st.session_state["plec_pacjenta"]
 is_samiec = "samiec" in plec_akt.lower() or "kocur" in plec_akt.lower()
 is_niekastrowany = "niekastrowany" in plec_akt.lower()
 
+# GENEROWANIE DOMYŚLNEGO "ZDROWEGO" OPISU
+def get_default_full_report(nadn_val="4,3"):
+    def_pech = "1,1"
+    def_nerki = "około 3,2 cm x 1,7 cm"
+    def_nadn = nadn_val
+    def_spl = "1,4"
+    def_zol = "2,1" if g_akt == "Kot" else "2,9"
+    def_dwu = "2,8"
+    def_okr = "1,3"
+    def_trz = "6,5" if g_akt == "Kot" else "8"
+    def_pech_zol = "1" if g_akt == "Kot" else "1,1"
+
+    sections = []
+    
+    if is_samiec and is_niekastrowany and g_akt == "Pies":
+        sections.append("Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie.")
+        
+    sections.append(szablony['pecherz'].format(pech=def_pech))
+    
+    rodz_text = get_rodne_text(plec_akt, g_akt)
+    if rodz_text:
+        sections.append(rodz_text)
+        
+    sections.append(szablony['nerki'].format(nerki=def_nerki))
+    sections.append(szablony['nadnercza'].format(nadn=def_nadn))
+    sections.append(szablony['sledziona'].format(spl=def_spl))
+    sections.append(szablony['zoladek'].format(zol=def_zol))
+    sections.append(szablony['jelita'].format(dwu=def_dwu, okr=def_okr))
+    sections.append(szablony['watroba'].format(pech_zol=def_pech_zol))
+    sections.append(szablony['trzustka'].format(trz=def_trz))
+    sections.append(szablony['wezly'])
+    sections.append(szablony['plyn'])
+    
+    if dodaj_tarczyce:
+        sections.append("TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych.")
+    
+    return "\n\n".join(sections)
+
+base_default_report = get_default_full_report()
+
+# Aktualizacja bazy (dla Trybu 1), jeśli zmienił się gatunek
+if base_default_report != st.session_state.get("last_mode1_hash", ""):
+    st.session_state["full_report_mode1"] = base_default_report
+    st.session_state["last_mode1_hash"] = base_default_report
+    st.session_state["editable_report_area"] = "" # Czyścimy pole dyktowania po zmianie gatunku
+
 # ==========================================
 # WYBÓR TRYBU PRACY 
 # ==========================================
@@ -248,8 +296,8 @@ st.markdown("<br>", unsafe_allow_html=True)
 # TRYB 1: DYKTOWANIE Z PEŁNYM ŚCISŁYM SZABLONEM
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
-    st.subheader("Wypowiedz obserwacje, AI zaktualizuje prawidłowy raport")
-    st.caption("Podyktuj zmiany (np. wpisane wymiary i patologie), a AI na tej podstawie wygeneruje dla Ciebie pełny, gotowy raport.")
+    st.subheader("Wypowiedz obserwacje dla ZMIENIONYCH narządów")
+    st.caption("Podyktuj patologie. AI przetworzy TYLKO to, co powiesz. Gotowy tekst skopiuj i wklej w odpowiednie miejsce w swoim schemacie poniżej.")
 
     if "ai_success_msg" in st.session_state:
         st.success(st.session_state["ai_success_msg"])
@@ -286,46 +334,26 @@ if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
                         if tmp_path and os.path.exists(tmp_path): os.remove(tmp_path)
 
                 if raw_transcript and len(raw_transcript) > 2:
-                    with st.spinner("🩺 KROK 2/2: Generowanie pełnych akapitów opisu USG..."):
+                    with st.spinner("🩺 KROK 2/2: Generowanie zredagowanego fragmentu..."):
                         try:
-                            sz_rozrodczy = get_rodne_text(plec_akt, g_akt)
-                            ai_jadra = "Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie." if (is_samiec and is_niekastrowany and g_akt == "Pies") else ""
-                            
-                            jadra_prompt = f'OPIS JĄDER (Osobny akapit przed pęcherzem): "{ai_jadra}"\n' if ai_jadra else ''
-                            rozrod_prompt = f'OPIS ROZRODU / PROSTATY: "{sz_rozrodczy}"\n' if sz_rozrodczy else 'BRAK OPISU UKŁADU ROZRODCZEGO DLA TEGO PACJENTA (Nie generuj go).\n'
-
-                            ai_pech = szablony['pecherz'].replace('{pech}', '[WYMIAR]')
-                            ai_ner = szablony['nerki'].replace('{nerki}', 'około [DODAJ WYMIARY]')
-                            ai_nadn = szablony['nadnercza'].replace('{nadn}', '[WYMIAR]')
-                            ai_spl = szablony['sledziona'].replace('{spl}', '[WYMIAR]')
-                            ai_zol = szablony['zoladek'].replace('{zol}', '[WYMIAR]')
-                            ai_jel = szablony['jelita'].replace('{dwu}', '[WYMIAR]').replace('{okr}', '[WYMIAR]')
-                            ai_wat = szablony['watroba'].replace('{pech_zol}', '[WYMIAR]')
-                            ai_trz = szablony['trzustka'].replace('{trz}', '[WYMIAR]')
-                            
+                            # Nowy rygorystyczny prompt zakazujący zmyślania narządów
                             system_prompt = f"""
-Jesteś profesjonalnym edytorem raportów USG weterynaryjnego. Przekształć notatkę w PEŁNE AKAPITY MEDYCZNE wg wzorców.
-GATUNEK: {g_akt}
-KRYTYCZNA ZASADA PŁCI (Pacjent: {plec_akt}):
-{jadra_prompt}{rozrod_prompt}
-MATRYCE AKAPITÓW DLA POZOSTAŁYCH NARZĄDÓW:
-PĘCHERZ MOCZOWY: "{ai_pech}"
-NERKI: "{ai_ner}"
-NADNERCZA: "{ai_nadn}"
-ŚLEDZIONA: "{ai_spl}"
-ŻOŁĄDEK: "{ai_zol}"
-JELITA I DWUNASTNICA: "{ai_jel}"
-WĄTROBA I PĘCHERZYK ŻÓŁCIOWY: "{ai_wat}"
-TRZUSTKA: "{ai_trz}"
-WĘZŁY CHŁONNE: "{szablony['wezly']}"
-WOLNY PŁYN: "{szablony['plyn']}"
-{( 'TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych.' if dodaj_tarczyce else '' )}
-ZASADY WYLOTOWE: Oddzielaj narządy nową linią. Zwracaj WYŁĄCZNIE czysty tekst opisu medycznego.
-"""
+                            Jesteś profesjonalnym edytorem raportów USG weterynaryjnego.
+                            GATUNEK PACJENTA: {g_akt}
+                            
+                            ZADANIE:
+                            Lekarz podyktował opis patologii lub wymiarów dla jednego lub kilku konkretnych narządów. 
+                            Twoim zadaniem jest przekształcić tę notatkę w spójny, medyczny tekst w stylu opisu USG.
+                            
+                            KRYTYCZNA ZASADA:
+                            Zredaguj i opisz TYLKO I WYŁĄCZNIE te narządy, o których lekarz bezpośrednio wspomina w notatce.
+                            Kategorycznie ZABRANIA SIĘ generowania opisu dla pozostałych, zdrowych narządów, o których nie ma mowy w nagraniu.
+                            Zwróć bezpośrednio gotowy fragment tekstu.
+                            """
                             response = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": f"Podyktowane:\n{raw_transcript}"}], temperature=0.0)
                             
                             st.session_state["editable_report_area"] = response.choices[0].message.content.strip()
-                            st.session_state["ai_success_msg"] = "✅ Wzorcowy raport medyczny wygenerowany pomyślnie!"
+                            st.session_state["ai_success_msg"] = "✅ Fragment wygenerowany pomyślnie! Wykonaj poprawki, skopiuj go i zastąp odpowiedni fragment w schemacie na dole."
                             st.rerun() 
 
                         except Exception as e:
@@ -335,19 +363,26 @@ ZASADY WYLOTOWE: Oddzielaj narządy nową linią. Zwracaj WYŁĄCZNIE czysty tek
                 else: 
                     st.warning("⚠️ Nie usłyszałem wyraźnie tekstu. Spróbuj nagrać jeszcze raz.")
             else: 
-                st.error("⚠️ Brak aktywnego klienta OpenAI API. Sprawdź, czy wprowadzono poprawny klucz w ustawieniach (Settings -> Secrets).")
+                st.error("⚠️ Brak aktywnego klienta OpenAI API. Sprawdź ustawienia klucza API w Secrets.")
     else: 
         st.session_state["processed_audio_size"] = 0 
 
     st.markdown("---")
     
-    st.text_area("Edytor Raportu (Ostatnie poprawki):", key="editable_report_area", height=350, placeholder="Tutaj pojawi się gotowy wygenerowany raport USG...")
+    # 1. OKIENKO - TYLKO REZULTAT DYKTOWANIA
+    st.markdown("<h4 style='color: #135c7e;'>📝 Zredagowany fragment (z notatki głosowej):</h4>", unsafe_allow_html=True)
+    st.text_area("Wynik AI", key="editable_report_area", height=150, placeholder="Tutaj pojawi się zredagowany tekst TYLKO dla tych narządów, o których podyktujesz...", label_visibility="collapsed")
     
-    st.markdown("<h4 style='color: #135c7e;'>📋 Gotowy Raport (do skopiowania):</h4>", unsafe_allow_html=True)
-    st.code(st.session_state["editable_report_area"], language=None)
+    st.markdown("---")
 
-    if st.button("💾 Zapisz ten opis do historii", key="save_btn_tab1"):
-        add_to_history(st.session_state["editable_report_area"])
+    # 2. OKIENKO - TWÓJ PEŁNY SCHEMAT ZDROWY (DO EDYCJI I ZAPISU)
+    st.markdown("<h4 style='color: #135c7e;'>📄 Twój bazowy schemat (pełny raport do złożenia):</h4>", unsafe_allow_html=True)
+    st.caption("Wklej zredagowany fragment z góry w odpowiednie miejsce poniżej (zastępując zdrowy opis chorego narządu).")
+    
+    st.text_area("Twój pełny raport", key="full_report_mode1", height=450, label_visibility="collapsed")
+
+    if st.button("💾 Zapisz ten pełny opis do historii", key="save_btn_tab1"):
+        add_to_history(st.session_state["full_report_mode1"])
         st.success("Zapisano badanie do paska bocznego!")
 
 
@@ -628,7 +663,8 @@ with st.sidebar:
         for i, item in enumerate(st.session_state["reports_history"]):
             label = f"🕒 {item['time']} - {item['snippet']}"
             if st.button(label, key=f"hist_{i}", use_container_width=True):
-                st.session_state["editable_report_area"] = item["text"]
+                # Historia nadpisuje pole właściwe dla danego trybu
+                st.session_state["full_report_mode1"] = item["text"]
                 st.session_state["editable_report_area_2"] = item["text"]
                 st.session_state["editable_report_area_3"] = item["text"]
                 st.rerun()
