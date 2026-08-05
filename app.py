@@ -235,7 +235,6 @@ def get_default_full_report(nadn_val="4,3"):
 
     sections = []
     
-    # Jeśli pies niekastrowany (norma), jądra idą nad pęcherz
     if is_samiec and is_niekastrowany:
         sections.append("Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie.")
         
@@ -394,7 +393,8 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
             dim_pecherzyk = st.text_input("Pęch. żółciowy ściana (mm)", placeholder="np. 1.1")
 
     gat = st.session_state["gatunek_pacjenta"]
-    v_pech = dim_pecherz.strip() if dim_pecherz.strip() else "1,1"
+    user_pech = dim_pecherz.strip()
+    
     v_nl = dim_nerka_l.strip()
     v_np = dim_nerka_p.strip()
     if v_nl or v_np:
@@ -452,23 +452,31 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         with col_d2:
             chk_zmiana = st.checkbox("Dodaj opis: Zmiana podskórna (okolica pośladka)")
 
-    # Logika patologii pęcherza
+    # Logika patologii pęcherza (uwzględniająca wymiar wpisany przez usera)
     if sel_pecherz == "Słabo wypełniony pęcherz":
-        txt_pech = "Pęcherz moczowy słabo wypełniony, prawidłowego kształtu, ściana gr. ok. 4,4 mm, jednak trudna do pełnej oceny ze względu na obkurczenie, wtórne do słabego wypełnienia pęcherza, mocz aechogenny, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
+        val_p = user_pech if user_pech else "4,4"
+        txt_pech = f"Pęcherz moczowy słabo wypełniony, prawidłowego kształtu, ściana gr. ok. {val_p} mm, jednak trudna do pełnej oceny ze względu na obkurczenie, wtórne do słabego wypełnienia pęcherza, mocz aechogenny, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
     elif sel_pecherz == "Zagęszczony mocz":
-        txt_pech = "Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. 1,2 mm, prawidłowej budowy, bez cech zapalenia ostrego, mocz lekko zagęszczony, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
+        val_p = user_pech if user_pech else "1,2"
+        txt_pech = f"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. {val_p} mm, prawidłowej budowy, bez cech zapalenia ostrego, mocz lekko zagęszczony, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
     elif sel_pecherz == "Ostre zapalenie pęcherza moczowego":
-        txt_pech = "Pęcherz moczowy umiarkowanie wypełniony, prawidłowego kształtu, ściana pogrubiała, gr. ok. 4 mm, o cechach obrzęku, mocz lekko zagęszczony, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Wokół pęcherza umiarkowany odczyn zapalny. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
+        val_p = user_pech if user_pech else "4"
+        txt_pech = f"Pęcherz moczowy umiarkowanie wypełniony, prawidłowego kształtu, ściana pogrubiała, gr. ok. {val_p} mm, o cechach obrzęku, mocz lekko zagęszczony, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Wokół pęcherza umiarkowany odczyn zapalny. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
     elif sel_pecherz == "Przewlekłe zapalenie pęcherza":
-        txt_pech = "Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, ściana lekko pogrubiała, do ok. 2,3 mm, warstwa śluzowa o nieco podwyższonej echogeniczności, o lekko nieregularnej powierzchni, bez cech zapalenia ostrego, mocz aechogenny, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
+        val_p = user_pech if user_pech else "2,3"
+        txt_pech = f"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, ściana lekko pogrubiała, do ok. {val_p} mm, warstwa śluzowa o nieco podwyższonej echogeniczności, o lekko nieregularnej powierzchni, bez cech zapalenia ostrego, mocz aechogenny, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
     elif sel_pecherz == "Osad w pęcherzu":
-        txt_pech = "Pęcherz moczowy umiarkowanie wypełniony, prawidłowego kształtu, ściana niepogrubiała, gr. do ok. 1,3 mm, mocz zagęszczony, z obecnością mineralizacji w postaci osadu na dnie pęcherza, bez cech niedrożności, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
+        val_p = user_pech if user_pech else "1,3"
+        txt_pech = f"Pęcherz moczowy umiarkowanie wypełniony, prawidłowego kształtu, ściana niepogrubiała, gr. do ok. {val_p} mm, mocz zagęszczony, z obecnością mineralizacji w postaci osadu na dnie pęcherza, bez cech niedrożności, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
     elif sel_pecherz == "Kamienie w pęcherzu":
-        txt_pech = "Pęcherz moczowy umiarkowanie wypełniony, prawidłowego kształtu, ściana lekko pogrubiała, gr. do ok. 3 mm, mocz zagęszczony, z obecnością mineralizacji w postaci kilku (3-4), kamieni, o regularnej powierzchni, śr. do ok. 9 mm, bez cech niedrożności, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
+        val_p = user_pech if user_pech else "3"
+        txt_pech = f"Pęcherz moczowy umiarkowanie wypełniony, prawidłowego kształtu, ściana lekko pogrubiała, gr. do ok. {val_p} mm, mocz zagęszczony, z obecnością mineralizacji w postaci kilku (3-4), kamieni, o regularnej powierzchni, śr. do ok. 9 mm, bez cech niedrożności, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
     elif sel_pecherz == "Neo pęcherza":
-        txt_pech = "Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. 1,4 mm, warstwa śluzowa o nieco podniesionej echogeniczności, o lekko pofałdowanej powierzchni, bez cech zapalenia ostrego. W okolicy szyjki pęcherza moczowego, widoczne wywodzące się ze ściany, nieregularne, polipowatego kształtu twory, obustronnie, wys. ok. 5 mm, na dł. ok. 20 mm, na ich powierzchni uchwytne drobne mineralizacje. Okolica trójkąta pęcherza moczowego bez zmian. Mocz aechogenny, lokalizacja narządu prawidłowa. Ściana cewki moczowej nieco pogrubiała, do ok. 2,4 mm, przyściennie widoczne liczne mineralizacje, na długości do ok. połowy gruczołu krokowego, światło nieposzerzone, bez cech niedrożności."
+        val_p = user_pech if user_pech else "1,4"
+        txt_pech = f"Pęcherz moczowy dobrze wypełniony, prawidłowego kształtu, cienkościenny, ściana gr. ok. {val_p} mm, warstwa śluzowa o nieco podniesionej echogeniczności, o lekko pofałdowanej powierzchni, bez cech zapalenia ostrego. W okolicy szyjki pęcherza moczowego, widoczne wywodzące się ze ściany, nieregularne, polipowatego kształtu twory, obustronnie, wys. ok. 5 mm, na dł. ok. 20 mm, na ich powierzchni uchwytne drobne mineralizacje. Okolica trójkąta pęcherza moczowego bez zmian. Mocz aechogenny, lokalizacja narządu prawidłowa. Ściana cewki moczowej nieco pogrubiała, do ok. 2,4 mm, przyściennie widoczne liczne mineralizacje, na długości do ok. połowy gruczołu krokowego, światło nieposzerzone, bez cech niedrożności."
     else:
-        txt_pech = szablony['pecherz'].format(pech=v_pech)
+        val_p = user_pech if user_pech else "1,1"
+        txt_pech = szablony['pecherz'].format(pech=val_p)
 
     # Jądra nad pęcherzem (dla niekastrowanego samca)
     jadra_sekcja = ""
