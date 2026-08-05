@@ -207,6 +207,10 @@ with st.sidebar:
         
     plec_opcje = ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"] if gatunek == "Pies" else ["Kotka (kastrowana / kikut)", "Kotka (cała)", "Kocur (samiec niekastrowany)", "Kocur (samiec kastrowany)"]
     
+    # NAPRAWA BŁĘDU (Zabezpieczenie przed niewłaściwą opcją przy zmianie gatunku)
+    if st.session_state.get("plec_pacjenta") not in plec_opcje:
+        st.session_state["plec_pacjenta"] = plec_opcje[0]
+        
     with st.container(border=True):
         st.markdown("<div style='font-weight: 600; color: #135c7e; margin-bottom: 5px; font-size: 15px;'>Płeć i stan fizjologiczny:</div>", unsafe_allow_html=True)
         plec = st.selectbox(
@@ -467,7 +471,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         with col_d2:
             chk_zmiana = st.checkbox("Dodaj opis: Zmiana podskórna (okolica pośladka)")
 
-    # Logika patologii pęcherza
+    # Logika patologii pęcherza (uwzględniająca wymiar wpisany przez usera)
     if sel_pecherz == "Słabo wypełniony pęcherz":
         val_p = user_pech if user_pech else "4,4"
         txt_pech = f"Pęcherz moczowy słabo wypełniony, prawidłowego kształtu, ściana gr. ok. {val_p} mm, jednak trudna do pełnej oceny ze względu na obkurczenie, wtórne do słabego wypełnienia pęcherza, mocz aechogenny, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
