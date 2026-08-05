@@ -22,7 +22,6 @@ if "editable_report_area" not in st.session_state: st.session_state["editable_re
 if "reports_history" not in st.session_state: st.session_state["reports_history"] = []
 if "gatunek_pacjenta" not in st.session_state: st.session_state["gatunek_pacjenta"] = "Pies"
 if "plec_pacjenta" not in st.session_state: st.session_state["plec_pacjenta"] = "Suka (kastrowana / kikut)"
-if "last_mode1_hash" not in st.session_state: st.session_state["last_mode1_hash"] = ""
 if "last_mode2_hash" not in st.session_state: st.session_state["last_mode2_hash"] = ""
 if "last_mode3_hash" not in st.session_state: st.session_state["last_mode3_hash"] = ""
 if "processed_audio_size" not in st.session_state: st.session_state["processed_audio_size"] = 0
@@ -183,7 +182,7 @@ def get_templates(gatunek):
             "nadnercza": "Nadnercza prawidłowej wielkości i kształtu, grubości około {nadn} mm, bez uchwytnych zmian w budowie.",
             "sledziona": "Śledziona prawidłowej wielkości, grubości około {spl} cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona.",
             "zoladek": "Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości, pomiędzy fałdami do około {zol} mm, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego.",
-            "jelita": "Ściana dwunastnicy niepogrubiała, gr. ok. {dwu} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość płynnej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa. Światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka zachowana. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, gr. do ok. {okr} mm, okrężnica wypeł্নে masami kałowymi.",
+            "jelita": "Ściana dwunastnicy niepogrubiała, gr. ok. {dwu} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość płynnej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa. Światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka zachowana. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, gr. do ok. {okr} mm, okrężnica wypełniona uformowanymi masami kałowymi.",
             "watroba": "Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez uchwytnych zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. {pech_zol} mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie.",
             "trzustka": "Trzustka prawidłowej wielkości i kształtu, gr. ok. {trz} mm w płacie prawym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony.",
             "wezly": "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie.",
@@ -207,7 +206,6 @@ with st.sidebar:
         
     plec_opcje = ["Suka (kastrowana / kikut)", "Suka (cała)", "Pies (samiec niekastrowany)", "Pies (samiec kastrowany)"] if gatunek == "Pies" else ["Kotka (kastrowana / kikut)", "Kotka (cała)", "Kocur (samiec niekastrowany)", "Kocur (samiec kastrowany)"]
     
-    # NAPRAWA BŁĘDU (Zabezpieczenie przed niewłaściwą opcją przy zmianie gatunku)
     if st.session_state.get("plec_pacjenta") not in plec_opcje:
         st.session_state["plec_pacjenta"] = plec_opcje[0]
         
@@ -224,54 +222,11 @@ with st.sidebar:
         dodaj_tarczyce = st.checkbox("Dodaj badanie tarczycy", value=False)
 
 
-# Pobranie aktywnych szablonów narządów i stanu płci
 szablony = get_templates(st.session_state["gatunek_pacjenta"])
 g_akt = st.session_state["gatunek_pacjenta"]
 plec_akt = st.session_state["plec_pacjenta"]
 is_samiec = "samiec" in plec_akt.lower() or "kocur" in plec_akt.lower()
 is_niekastrowany = "niekastrowany" in plec_akt.lower()
-
-# GENEROWANIE DOMYŚLNEGO "ZDROWEGO" OPISU (DLA WSZYSTKICH TRYBÓW)
-def get_default_full_report(nadn_val="4,3"):
-    def_pech = "1,1"
-    def_nerki = "około 3,2 cm x 1,7 cm"
-    def_nadn = nadn_val
-    def_spl = "1,4"
-    def_zol = "2,1" if g_akt == "Kot" else "2,9"
-    def_dwu = "2,8"
-    def_okr = "1,3"
-    def_trz = "6,5" if g_akt == "Kot" else "8"
-    def_pech_zol = "1" if g_akt == "Kot" else "1,1"
-
-    sections = []
-    
-    # Jądra dla psa nad pęcherzem
-    if is_samiec and is_niekastrowany and g_akt == "Pies":
-        sections.append("Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie.")
-        
-    sections.append(szablony['pecherz'].format(pech=def_pech))
-    
-    # Układ rozrodczy (tylko tam, gdzie jest potrzebny)
-    rodz_text = get_rodne_text(plec_akt, g_akt)
-    if rodz_text:
-        sections.append(rodz_text)
-        
-    sections.append(szablony['nerki'].format(nerki=def_nerki))
-    sections.append(szablony['nadnercza'].format(nadn=def_nadn))
-    sections.append(szablony['sledziona'].format(spl=def_spl))
-    sections.append(szablony['zoladek'].format(zol=def_zol))
-    sections.append(szablony['jelita'].format(dwu=def_dwu, okr=def_okr))
-    sections.append(szablony['watroba'].format(pech_zol=def_pech_zol))
-    sections.append(szablony['trzustka'].format(trz=def_trz))
-    sections.append(szablony['wezly'])
-    sections.append(szablony['plyn'])
-    
-    if dodaj_tarczyce:
-        sections.append("TARCZYCA: Płaty tarczycy prawidłowej wielkości i kształtu, miąższ o prawidłowej echogeniczności, bez zmian ogniskowych.")
-    
-    return "\n\n".join(sections)
-
-base_default_report = get_default_full_report()
 
 # ==========================================
 # WYBÓR TRYBU PRACY 
@@ -294,16 +249,11 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ==========================================
 if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
     st.subheader("Wypowiedz obserwacje, AI zaktualizuje prawidłowy raport")
-    st.caption("Poniżej znajduje się domyślny, zdrowy opis pacjenta. Podyktuj zmiany, a AI sprytnie nadpisze tylko te narządy, o których wspomnisz.")
+    st.caption("Podyktuj zmiany (np. wpisane wymiary i patologie), a AI na tej podstawie wygeneruje dla Ciebie pełny, gotowy raport.")
 
-    # Wyświetlenie komunikatu o sukcesie (jeśli został zachowany przed rerunem)
     if "ai_success_msg" in st.session_state:
         st.success(st.session_state["ai_success_msg"])
         del st.session_state["ai_success_msg"]
-
-    if base_default_report != st.session_state.get("last_mode1_hash", ""):
-        st.session_state["editable_report_area"] = base_default_report
-        st.session_state["last_mode1_hash"] = base_default_report
 
     audio_recorded = st.audio_input("Nagraj notatkę głosową USG", key="audio_input_widget")
 
@@ -374,7 +324,6 @@ ZASADY WYLOTOWE: Oddzielaj narządy nową linią. Zwracaj WYŁĄCZNIE czysty tek
 """
                             response = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": f"Podyktowane:\n{raw_transcript}"}], temperature=0.0)
                             
-                            # Odświeżenie pola tekstowego natychmiastowo poprzez st.rerun()
                             st.session_state["editable_report_area"] = response.choices[0].message.content.strip()
                             st.session_state["ai_success_msg"] = "✅ Wzorcowy raport medyczny wygenerowany pomyślnie!"
                             st.rerun() 
@@ -386,13 +335,13 @@ ZASADY WYLOTOWE: Oddzielaj narządy nową linią. Zwracaj WYŁĄCZNIE czysty tek
                 else: 
                     st.warning("⚠️ Nie usłyszałem wyraźnie tekstu. Spróbuj nagrać jeszcze raz.")
             else: 
-                st.error("⚠️ Brak aktywnego klienta OpenAI API. Sprawdź, czy wprowadzono poprawny klucz w ustawieniach.")
+                st.error("⚠️ Brak aktywnego klienta OpenAI API. Sprawdź, czy wprowadzono poprawny klucz w ustawieniach (Settings -> Secrets).")
     else: 
         st.session_state["processed_audio_size"] = 0 
 
     st.markdown("---")
     
-    st.text_area("Edytor Raportu (Ostatnie poprawki):", key="editable_report_area", height=350)
+    st.text_area("Edytor Raportu (Ostatnie poprawki):", key="editable_report_area", height=350, placeholder="Tutaj pojawi się gotowy wygenerowany raport USG...")
     
     st.markdown("<h4 style='color: #135c7e;'>📋 Gotowy Raport (do skopiowania):</h4>", unsafe_allow_html=True)
     st.code(st.session_state["editable_report_area"], language=None)
@@ -400,6 +349,7 @@ ZASADY WYLOTOWE: Oddzielaj narządy nową linią. Zwracaj WYŁĄCZNIE czysty tek
     if st.button("💾 Zapisz ten opis do historii", key="save_btn_tab1"):
         add_to_history(st.session_state["editable_report_area"])
         st.success("Zapisano badanie do paska bocznego!")
+
 
 # ==========================================
 # TRYB 2: TABELA WYMIARÓW + PATOLOGIE
@@ -485,7 +435,6 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         with col_d2:
             chk_zmiana = st.checkbox("Dodaj opis: Zmiana podskórna (okolica pośladka)")
 
-    # Logika patologii pęcherza (uwzględniająca wymiar wpisany przez usera)
     if sel_pecherz == "Słabo wypełniony pęcherz":
         val_p = user_pech if user_pech else "4,4"
         txt_pech = f"Pęcherz moczowy słabo wypełniony, prawidłowego kształtu, ściana gr. ok. {val_p} mm, jednak trudna do pełnej oceny ze względu na obkurczenie, wtórne do słabego wypełnienia pęcherza, mocz aechogenny, bez uchwytnych mineralizacji w świetle, lokalizacja narządu prawidłowa. Cewka moczowa w dostępnym do badania odcinku nieposzerzona, ściana prawidłowej budowy, bez uchwytnych złogów w świetle."
@@ -511,7 +460,6 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         val_p = user_pech if user_pech else "1,1"
         txt_pech = szablony['pecherz'].format(pech=val_p)
 
-    # Jądra nad pęcherzem (Tylko dla Psa niekastrowanego)
     jadra_sekcja = ""
     if is_samiec and is_niekastrowany and g_akt == "Pies":
         if sel_prostata == "Wnętrostwo":
@@ -521,7 +469,6 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         else:
             jadra_sekcja = "Oba jądra w worku mosznowym, prawidłowej wielkości i kształtu, miąższ obu jąder normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrza bez uchwytnych zmian w budowie."
 
-    # Układ rozrodczy / Prostata (Zasada kotów i psów)
     txt_rodne = ""
     if g_akt == "Kot":
         if not is_samiec and "cała" in plec_akt.lower():
@@ -533,7 +480,6 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
                 txt_rodne = "Macica powiększona, na wysokości rogów śr. ok. 10 mm, na wysokości szyjki macicy ok. 10 mm, na wysokości trzonu narządu ok. 7 mm. Ściana lekko pogrubiała do ok. 2,5 mm, o lekko podwyższonej echogeniczności, w świetle macicy nieco zwiększona ilość aechogennego płynu. Jajniki niepowiększone, wielkości ok. 8 mm x 5 mm, normoechogenne, bez zmian guzowatych, bez uchwytnych zmian w budowie."
             else:
                 txt_rodne = get_rodne_text(plec_akt, g_akt)
-        # Else: kot kastrowany lub kocur = txt_rodne zostaje ""
     else: # Pies
         if is_samiec:
             if sel_prostata == "Przerost prostaty":
