@@ -82,7 +82,6 @@ st.markdown("""
     .stTextArea textarea, .stTextInput input, .stSelectbox > div > div { border-radius: 10px !important; border: 1px solid #dce4e6 !important;}
     .stTextArea textarea:focus, .stTextInput input:focus, .stSelectbox > div > div:focus { border-color: var(--color-btn-teal) !important; box-shadow: 0 0 0 1px var(--color-btn-teal) !important;}
     
-    /* Zmniejszenie marginesów nagłówków w sekcji patologii */
     .stMarkdown h5 {
         color: #135c7e;
         margin-top: 15px;
@@ -277,7 +276,6 @@ def get_default_full_report(nadn_val="4,3"):
 
 base_default_report = get_default_full_report()
 
-# PILNUJEMY, ABY DOLNE OKNO NIGDY NIE BYŁO PUSTE NA STARCIE LUB PO ZMIANIE GATUNKU
 if base_default_report != st.session_state.get("last_mode1_hash", "") or not st.session_state.get("full_report_mode1"):
     st.session_state["full_report_mode1"] = base_default_report
     st.session_state["last_mode1_hash"] = base_default_report
@@ -391,7 +389,7 @@ if tryb == "🎙️ TRYB 1: Dyktowanie (AI)":
 
 
 # ==========================================
-# TRYB 2: TABELA WYMIARÓW + PATOLOGIE (Z NOWĄ BAZĄ)
+# TRYB 2: TABELA WYMIARÓW + PATOLOGIE
 # ==========================================
 elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     st.subheader("Wpisz wymiary i zaznacz patologie z bazy")
@@ -419,8 +417,6 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     
     v_nl = dim_nerka_l.strip()
     v_np = dim_nerka_p.strip()
-    # Jeśli użytkownik wpisał wymiar, używamy go. W przeciwnym razie ustawiamy flagę na false, 
-    # żeby patologia mogła narzucić swoje specyficzne wymiary, jeśli jakieś ma (np. dla PKD).
     user_nerki_wpisane = bool(v_nl or v_np)
     if user_nerki_wpisane:
         v_nerki = f"lewa około {v_nl if v_nl else '3,2 x 1,7'} cm, prawa ok. {v_np if v_np else '3,5 x 2,4'} cm"
@@ -441,39 +437,40 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     pat_pecherz_options = ["Prawidłowy (Norma)", "Słabo wypełniony pęcherz", "Zagęszczony mocz", "Ostre zapalenie pęcherza moczowego", "Przewlekłe zapalenie pęcherza", "Osad w pęcherzu", "Kamienie w pęcherzu", "Neo pęcherza"]
     pat_macica_options = ["Prawidłowy / Fizjologiczny (Norma)", "Macica - ruja", "Ropne zapalenie macicy", "Śluzo/wodomacicze"]
     pat_prostata_options = ["Prawidłowy / Fizjologiczny (Norma)", "Przerost prostaty", "Wnętrostwo", "Guz jądra"]
-    pat_nerki_options = ["Prawidłowe (Norma)", "Zwyrodnienie nerek", "Zwyrodnienie nerek z poszerzeniem miedniczek", "PKD", "Pojedyncze torbiele w nerkach", "Ogniska pozawałowe", "Objaw rąbka", "Mineralizacje w zachyłkach miedniczek", "Ektopia moczowodu / Mineralizacje"]
+    pat_nerki_options = ["Prawidłowe (Norma)", "Zwyrodnienie nerek", "Zwyrodnienie nerek z poszerzeniem miedniczek", "PKD", "Pojedyncze torbiele w nerkach", "Ogniska pozawałowe", "Objaw rąbka", "Mineralizacje w zachyłkach miedniczek"]
     pat_nadnercza_options = ["Prawidłowe (Norma)", "Powiększone nadnercza", "Guzy nadnerczy"]
     pat_sledziona_options = ["Prawidłowa (Norma)", "Przebudowa przerostowa śledziony", "Guz śledziony", "Łagodne zmiany w śledzionie", "Mielolipoma"]
     pat_watroba_options = ["Prawidłowa (Norma)", "Zwyrodnienie i przerost drobnoguzkowy wątroby", "Zmiany guzowate w miąższu wątroby", "Ostre zapalenie wątroby"]
-    pat_pecherzyk_options = ["Prawidłowy (Norma)", "Ostre zapalenie pęcherzyka", "Przewlekłe zapalenie pęcherzyka", "Błotko w pęcherzyku żółciowym", "Mineralizacje w pęcherzyku żółciowym", "Mineralizacje w pęcherzyku i drogach żółciowych", "Poszerzone drogi żółciowe", "Polipy w pęcherzyku żółciowym"]
-    pat_trzustka_options = ["Prawidłowa (Norma)", "Ostre zapalenie trzustki", "Przebudowa przewlekła", "Przebudowa przewlekła z poszerzonym przewodem"]
-    pat_pokarmowy_options = ["Prawidłowy (Norma)", "Ostre zapalenie żołądka", "Refluks / Nadkwasota", "Przewlekłe zapalenie żołądka", "Ostre zapalenie jelit", "Zmiany w typie zaburzeń trawienia", "IBD", "Przewlekłe zapalenie jelit"]
+    pat_pecherzyk_options = ["Prawidłowy (Norma)", "Ostre zapalenie pęcherzyka żółciowego", "Przewlekłe zapalenie pęcherzyka żółciowego", "Błotko w pęcherzyku żółciowym", "Mineralizacje w pęcherzyku żółciowym", "Mineralizacje w pęcherzyku żółciowym i drogach żółciowych", "Poszerzone drogi żółciowe", "Polipy w pęcherzyku żółciowym"]
+    pat_trzustka_options = ["Prawidłowa (Norma)", "Ostre zapalenie trzustki", "Przebudowa przewlekła", "Przebudowa przewlekła z poszerzonym przewodem trzustkowym"]
+    pat_pokarmowy_options = ["Prawidłowy (Norma)", "Ostre zapalenie żołądka", "Refluks", "Przewlekłe zapalenie żołądka", "Ostre zapalenie jelit", "Zmiany w typie zaburzeń trawienia", "IBD", "Przewlekłe zapalenie jelit"]
 
     # ================= WYŚWIETLANIE LIST W KOLUMNACH =================
     with st.container(border=True):
-        st.markdown("<h5>UKŁAD MOCZOWO-PŁCIOWY:</h5>", unsafe_allow_html=True)
+        st.markdown("<h5>1. UKŁAD MOCZOWO-PŁCIOWY:</h5>", unsafe_allow_html=True)
         col_p1, col_p2, col_p3 = st.columns(3)
         with col_p1: sel_pecherz = st.selectbox("Pęcherz moczowy:", pat_pecherz_options, label_visibility="collapsed")
         with col_p2: sel_macica = st.selectbox("Rozród (Samica):", pat_macica_options[:4], label_visibility="collapsed")
         with col_p3: sel_prostata = st.selectbox("Prostata/Jądra (Samiec):", pat_prostata_options, label_visibility="collapsed")
         
-        st.markdown("<h5>NARZĄDY MIĄŻSZOWE (I):</h5>", unsafe_allow_html=True)
+        st.markdown("<h5>2. NARZĄDY MIĄŻSZOWE (I):</h5>", unsafe_allow_html=True)
         col_n1, col_n2, col_n3 = st.columns(3)
         with col_n1: sel_nerki = st.selectbox("Nerki:", pat_nerki_options, label_visibility="collapsed")
         with col_n2: sel_nadnercza = st.selectbox("Nadnercza:", pat_nadnercza_options, label_visibility="collapsed")
         with col_n3: sel_sledziona = st.selectbox("Śledziona:", pat_sledziona_options, label_visibility="collapsed")
 
-        st.markdown("<h5>NARZĄDY MIĄŻSZOWE (II):</h5>", unsafe_allow_html=True)
+        st.markdown("<h5>3. NARZĄDY MIĄŻSZOWE (II):</h5>", unsafe_allow_html=True)
         col_w1, col_w2, col_w3 = st.columns(3)
         with col_w1: sel_watroba = st.selectbox("Wątroba:", pat_watroba_options, label_visibility="collapsed")
         with col_w2: sel_pech_zol = st.selectbox("Pęcherzyk żółciowy i drogi:", pat_pecherzyk_options, label_visibility="collapsed")
         with col_w3: sel_trzustka = st.selectbox("Trzustka:", pat_trzustka_options, label_visibility="collapsed")
 
-        st.markdown("<h5>PRZEWÓD POKARMOWY:</h5>", unsafe_allow_html=True)
+        st.markdown("<h5>4. PRZEWÓD POKARMOWY:</h5>", unsafe_allow_html=True)
         col_pk1, col_pk2 = st.columns(2)
         with col_pk1: sel_pokarmowy = st.selectbox("Żołądek i Jelita:", pat_pokarmowy_options, label_visibility="collapsed")
             
         st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+        st.markdown("<h5>5. ZMIANY SKÓRNE (Opcjonalne):</h5>", unsafe_allow_html=True)
         col_d1, col_d2 = st.columns(2)
         with col_d1: chk_klos = st.checkbox("Dodaj: Kłos (kończyna międzypalcowa)")
         with col_d2: chk_zmiana = st.checkbox("Dodaj: Zmiana podskórna (okolica pośladka)")
@@ -506,7 +503,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         val_p = user_pech if user_pech else "1,1"
         txt_pech = szablony['pecherz'].format(pech=val_p)
 
-    # 2. JĄDRA / PROSTATA / UKŁAD ROZRODCZY
+    # 2. UKŁAD ROZRODCZY
     jadra_sekcja = ""
     if is_samiec and is_niekastrowany and g_akt == "Pies":
         if sel_prostata == "Wnętrostwo": jadra_sekcja = "Lewe jądro w worku mosznowym, prawidłowej wielkości i kształtu, ok. 2,2 cm x 1,4 cm, miąższ normoechogenny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrze bez uchwytnych zmian w budowie. Prawe jądro wnętrowskie, zlokalizowane w kanale pachwinowym, w około 1/3 doogonowej części jego długości/ na terenie jamy brzusznej, doogonowo od nerki lewej i śledziony, w sąsiedztwie rozwidlenia aorty. Jądro nieco pomniejszone, wielkości ok. 1,3 cm x 2,2 cm, prawidłowego kształtu, miąższ o nieco obniżonej echogeniczności, jednorodny, bez uchwytnych zmian ogniskowych, śródjądrze dobrze zaznaczone, najądrze bez zmian."
@@ -534,37 +531,36 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     if sel_nerki == "Zwyrodnienie nerek": txt_ner = f"Nerki prawidłowego kształtu i wielkości, lewa około {v_nl if v_nl else '3,2 x 1,7'} cm, prawa ok. {v_np if v_np else '3,5 x 2,4'} cm, warstwa korowa o lekko podwyższonej echogeniczności, nieco niejednorodna struktura, nerki o lekko zatartej granicy korowo-rdzeniowej, stosunek obu warstw zachowany/warstwa korowa lekko pogrubiała/warstwa korowa odcinkowo lekko ścieńczała. Torebka narządu nieco nieregularna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
     elif sel_nerki == "Zwyrodnienie nerek z poszerzeniem miedniczek": txt_ner = f"Nerki prawidłowego kształtu i wielkości, lewa około {v_nl if v_nl else '3,2 x 1,7'} cm, prawa ok. {v_np if v_np else '3,5 x 2,4'} cm, warstwa korowa o lekko podwyższonej echogeniczności, nieco niejednorodna struktura, nerki o lekko zatartej granicy korowo-rdzeniowej, stosunek obu warstw zachowany/warstwa korowa lekko pogrubiała/warstwa korowa odcinkowo lekko ścieńczała. Torebka narządu nieco nieregularna, miedniczki nerkowe lekko poszerzone, lewa do ok. 2,5 mm, prawa do ok. 2,8 mm, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
     elif sel_nerki == "PKD": txt_ner = f"Nerki zniekształcone, powiększone, lewa około {v_nl if v_nl else '6,3 x 4,15'} cm, prawa {v_np if v_np else '8,4 x 4,7'} cm, w miąższu obu nerek obecne liczne, torbiele proste i złożone, w nerce lewej największa wielkości ok. 5,6 cm x 4,35 cm, w nerce prawej wielkości ok. 3,1 cm x 2,75 cm, wszystkie wypełnione lekko zagęszczonym płynem, wyraźnie modulujące torebkę narządu. Pozostałe fragmenty miąższu o podwyższonej echogeniczności, z pojedynczymi ogniskami zwłóknień, nerki o zatartej granicy korowo-rdzeniowej. Torebka narządu nieregularna, hiperechogenna, miedniczki nerkowe lekko poszerzone, lewa do ok. 4,6 mm, prawa do ok. 3 mm, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
-    elif sel_nerki == "Pojedyncze torbiele w nerkach": txt_ner = f"Nerki prawidłowego kształtu i wielkości, lewa około {v_nl if v_nl else '5,0 x 3,0'} cm, prawa ok. {v_np if v_np else '5,0 x 3,0'} cm, miąższ o lekko podwyższonej echogeniczności, w warstwie korowej obu nerek obecne pojedyncze torbiele proste, w nerce lewej śr. do ok. 2 mm, w nerce prawej śr. do ok. 1,8 mm, wypełnione aechogennym płynem, nerki o miernie zatartej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
+    elif sel_nerki == "Pojedyncze torbiele w nerkach": txt_ner = f"Nerki prawidłowego kształtu i wielkości, lewa około {v_nl if v_nl else '5 x 3'} cm, prawa ok. {v_np if v_np else '5 x 3'} cm, miąższ o lekko podwyższonej echogeniczności, w warstwie korowej obu nerek obecne pojedyncze torbiele proste, w nerce lewej śr. do ok. 2 mm, w nerce prawej śr. do ok. 1,8 mm, wypełnione aechogennym płynem, nerki o miernie zatartej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
     elif sel_nerki == "Ogniska pozawałowe": txt_ner = f"Nerki prawidłowego kształtu i wielkości, lewa około {v_nl if v_nl else '3,2 x 1,7'} cm, prawa ok. {v_np if v_np else '3,5 x 2,4'} cm, warstwa korowa o lekko podwyższonej echogeniczności, nieco niejednorodna struktura, w miąższu nerek obecne pojedyncze, hiperechogenne, klinowate ogniska, susp. ogniska pozawałowe, nerki o lekko zatartej granicy korowo-rdzeniowej, stosunek obu warstw zachowany/warstwa korowa lekko pogrubiała/warstwa korowa odcinkowo lekko ścieńczała. Torebka narządu lekko nieregularna, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
-    elif sel_nerki == "Objaw rąbka": txt_ner = f"Nerki prawidłowego kształtu i wielkości, lewa około {v_nl if v_nl else '5,0 x 3,0'} cm, prawa ok. {v_np if v_np else '5,0 x 3,0'} cm, miąższ o prawidłowej echogeniczności, nerki o miernie zatartej granicy korowo-rdzeniowej, obecny objaw rąbka gr. ok. 1,2 mm, stosunek obu warstw zachowany. Torebka narządu gładka, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
+    elif sel_nerki == "Objaw rąbka": txt_ner = f"Nerki prawidłowego kształtu i wielkości, lewa około {v_nl if v_nl else '5 x 3'} cm, prawa ok. {v_np if v_np else '5 x 3'} cm, miąższ o prawidłowej echogeniczności, nerki o miernie zatartej granicy korowo-rdzeniowej, obecny objaw rąbka gr. ok. 1,2 mm, stosunek obu warstw zachowany. Torebka narządu gładka, miedniczki nerkowe nieposzerzone, bez uchwytnych złogów w świetle. Moczowody bez uchwytnych zmian w budowie."
     elif sel_nerki == "Mineralizacje w zachyłkach miedniczek": txt_ner = f"Nerki prawidłowego kształtu i wielkości około {v_nerki}, kora i rdzeń prawidłowej echogeniczności, nerki o wyraźnej granicy korowo-rdzeniowej, stosunek obu warstw zachowany. Torebka narządu gładka, miedniczki nerkowe nieposzerzone, w zachyłkach miedniczek nerkowych obecne pasmowate ogniska mineralizacji, bez formowania kamieni, bez cech niedrożności. Moczowody bez uchwytnych zmian w budowie."
-    elif sel_nerki == "Ektopia moczowodu / Mineralizacje": txt_ner = "Ektopia moczowodu / Mineralizacje w moczowodach (Zalecany dodatkowy opis ręczny)."
     else: txt_ner = szablony['nerki'].format(nerki=v_nerki)
 
     # 4. NADNERCZA
-    if sel_nadnercza == "Powiększone nadnercza": txt_nadn = "Nadnercza powiększone i zaokrąglone w biegunach, lewe grubości około 6,3 mm w biegunie doogonowym, ok. 6,2 mm w biegunie doczaszkowym, prawe grubości około 6,3 mm w biegunie doogonowym, ok. 6,2 mm w biegunie doczaszkowym, bez uchwytnych zmian guzowatych."
+    if sel_nadnercza == "Powiększone nadnercza": txt_nadn = f"Nadnercza powiększone i zaokrąglone w biegunach, lewe grubości około {v_nadn if v_nadn != '4,3' else '6,3'} mm w biegunie doogonowym, ok. 6,2 mm w biegunie doczaszkowym, prawe grubości około {v_nadn if v_nadn != '4,3' else '6,3'} mm w biegunie doogonowym, ok. 6,2 mm w biegunie doczaszkowym, bez uchwytnych zmian guzowatych."
     elif sel_nadnercza == "Guzy nadnerczy": txt_nadn = "Nadnercze lewe powiększone, w biegunie doogonowym gr. ok. 11 mm, tutaj zmiana ogniskowa wielkości ok. 1,4 cm x 1,1 cm, o lekko podwyższonej, nieco niejednorodnej echogeniczności, unaczynienie obwodowe, zmiana powodująca efekt masy na okoliczne struktury, bez cech penetracji do okolicznych naczyń, biegun doczaszkowy w normie wielkości, gr. ok. 5,4 mm. Nadnercze prawe prawidłowej wielkości i kształtu, gr. ok. 5-5,6 mm, bez uchwytnych zmian w budowie."
     else: txt_nadn = szablony['nadnercza'].format(nadn=v_nadn)
 
     # 5. ŚLEDZIONA
     if sel_sledziona == "Przebudowa przerostowa śledziony": txt_spl = f"Śledziona prawidłowej wielkości, grubości około {v_spl} cm na wysokości trzonu narządu, miąższ lekko niejednorodny, drobnoziarnisty, bez uchwytnych zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
     elif sel_sledziona == "Guz śledziony": txt_spl = f"Śledziona powiększona, gr. ok. {v_spl if v_spl != '1,4' else '2,9'} cm na wysokości trzonu narządu, miąższ dość jednorodny, drobnoziarnisty, w miąższu na wysokości trzonu śledziony, bardziej dogłowowo, obecność zmiany ogniskowej, wielkości ok. 6,7 mm x 5,5 mm, o niejednorodnej strukturze, o mieszanej echogeniczności, w przewadze hipoechogennej względem miąższu śledziony, z obszarami hiperechogennymi, unaczynionej obwodowo, wyraźnie modulującej torebkę narządu. Reszta torebki narządu lekko nieregularna, hiperechogenna. Żyła śledzionowa nieposzerzona."
-    elif sel_sledziona == "Łagodne zmiany w śledzionie": txt_spl = f"Śledziona prawidłowej wielkości, grubości około {v_spl} cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, w miąższu na wysokości trzonu śledziony, obecność hipoechogennego obszaru wielkości ok. 6,7 mm x 5,2 mm, o dosyć regularnym kształcie, unaczynienie zbliżone do unaczynienia śledziony, bez cech modulowania torebki narządu. Torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
-    elif sel_sledziona == "Mielolipoma": txt_spl = f"Śledziona prawidłowej wielkości, grubości około {v_spl} cm na wysokości trzonu narządu, miąższ delikatnie niejednorodny, drobnoziarnisty, z obecnością pojedynczych, hiperechogennych, nieunaczynionych, regularnego kształtu obszarów, podtorebkowo i wzdłuż naczyń, średnicy do ok. 2,7 mm, torebka narządu nieco nieregularna, hiperechogenna. Żyła śledzionowa nieposzerzona."
+    elif sel_sledziona == "Łagodne zmiany w śledzionie": txt_spl = f"Śledziona prawidłowej wielkości, grubości około {v_spl if v_spl != '1,4' else '1,25'} cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, w miąższu na wysokości trzonu śledziony, obecność hipoechogennego obszaru wielkości ok. 6,7 mm x 5,2 mm, o dosyć regularnym kształcie, unaczynienie zbliżone do unaczynienia śledziony, bez cech modulowania torebki narządu. Torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona."
+    elif sel_sledziona == "Mielolipoma": txt_spl = f"Śledziona prawidłowej wielkości, grubości około {v_spl if v_spl != '1,4' else '1,2'} cm na wysokości trzonu narządu, miąższ delikatnie niejednorodny, drobnoziarnisty, z obecnością pojedynczych, hiperechogennych, nieunaczynionych, regularnego kształtu obszarów, podtorebkowo i wzdłuż naczyń, średnicy do ok. 2,7 mm, torebka narządu nieco nieregularna, hiperechogenna. Żyła śledzionowa nieposzerzona."
     else: txt_spl = szablony['sledziona'].format(spl=v_spl)
 
     # 6. WĄTROBA
     if sel_watroba == "Zwyrodnienie i przerost drobnoguzkowy wątroby": txt_wat = "Wątroba powiększona, miąższ gruboziarnisty, lekko niejednorodny, o podwyższonej echogeniczności, z licznymi hipoechogennymi obszarami, słabo odgraniczonymi, unaczynienie zbliżone do unaczynienia wątroby, śr. do ok. 8 mm, bez cech modulacji brzegu narządu, krawędzie narządu nieco zaokrąglone. Naczynia wątrobowe nieposzerzone."
-    elif sel_watroba == "Zmiany guzowate w miąższu wątroby": txt_wat = "Wątroba powiększona, miąższ gruboziarnisty, lekko niejednorodny, o lekko podwyższonej echogeniczności, w miąższu działu lewym obecność zmiany ogniskowej, wielkości ok. 8 mm x 4 mm, o niejednorodnej strukturze, o mieszanej echogeniczności, w przewadze hipoechogennej względem miąższu, z obszarami hiperechogennymi, unaczynionej obwodowo, bez cech modulacji brzegu narządu, krawędzie narządu nieco zaokrąglone. Naczynia wątrobowe nieposzerzone."
+    elif sel_watroba == "Zmiany guzowate w miąższu wątroby": txt_wat = "Wątroba powiększona, miąższ gruboziarnisty, lekko niejednorodny, o lekko podwyższonej echogeniczności, w miąższu działu lewego obecność zmiany ogniskowej, wielkości ok. 8 mm x 4 mm, o niejednorodnej strukturze, o mieszanej echogeniczności, w przewadze hipoechogennej względem miąższu śledziony, z obszarami hiperechogennymi, unaczynionej obwodowo, bez cech modulacji brzegu narządu, krawędzie narządu nieco zaokrąglone. Naczynia wątrobowe nieposzerzone."
     elif sel_watroba == "Ostre zapalenie wątroby": txt_wat = "Wątroba lekko powiększona, miąższ gruboziarnisty, jednorodny, o obniżonej echogeniczności, rysunek naczyń silniej zaznaczony, brak uchwytnych zmian ogniskowych, krawędzie narządu regularne. Ostry odczyn zapalny okołowątrobowy."
     else: txt_wat = "Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez uchwytnych zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone."
 
     # 7. PĘCHERZYK ŻÓŁCIOWY (doklejany do Wątroby)
-    if sel_pech_zol == "Ostre zapalenie pęcherzyka": txt_wat += " Pęcherzyk żółciowy niepowiększony, ściana pogrubiała, o cechach obrzęku, gr. ok. 1,9 mm, z niewielką ilością zagęszczeń żółci w świetle. Drogi żółciowe poszerzone, przewód żółciowy wspólny szer. do ok. 4 mm, bez uchwytnych złogów w świetle. Ostry odczyn zapalny wzdłuż dróg żółciowych. Układ wrotny bez uchwytnych zmian w budowie."
-    elif sel_pech_zol == "Przewlekłe zapalenie pęcherzyka": txt_wat += " Pęcherzyk żółciowy niepowiększony, ściana pogrubiała, o podwyższonej echogeniczności, gr. ok. 1,9 mm, z nieco zwiększoną ilością błotka w świetle, zajmującego ok. 1/3 objętości pęcherzyka, bez cech niedrożności. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
+    if sel_pech_zol == "Ostre zapalenie pęcherzyka żółciowego": txt_wat += " Pęcherzyk żółciowy niepowiększony, ściana pogrubiała, o cechach obrzęku, gr. ok. 1,9 mm, z niewielką ilością zagęszczeń żółci w świetle. Drogi żółciowe poszerzone, przewód żółciowy wspólny szer. do ok. 4 mm, bez uchwytnych złogów w świetle. Ostry odczyn zapalny wzdłuż dróg żółciowych. Układ wrotny bez uchwytnych zmian w budowie."
+    elif sel_pech_zol == "Przewlekłe zapalenie pęcherzyka żółciowego": txt_wat += " Pęcherzyk żółciowy niepowiększony, ściana pogrubiała, o podwyższonej echogeniczności, gr. ok. 1,9 mm, z nieco zwiększoną ilością błotka w świetle, zajmującego ok. 1/3 objętości pęcherzyka, bez cech niedrożności. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
     elif sel_pech_zol == "Błotko w pęcherzyku żółciowym": txt_wat += f" Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. {v_pech_zol} mm, z nieco zwiększoną ilością błotka w świetle, zajmującego ok. 1/3 objętości pęcherzyka, bez cech niedrożności. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
     elif sel_pech_zol == "Mineralizacje w pęcherzyku żółciowym": txt_wat += f" Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. {v_pech_zol} mm, z dość obfitym osadem mineralnym na dnie pęcherzyka/ z obecnością konglomeratów mineralnych śr. do ok. 4 mm, bez cech niedrożności. Drogi żółciowe nieposzerzone, bez uchwytnych złogów w świetle. Układ wrotny bez uchwytnych zmian w budowie."
-    elif sel_pech_zol == "Mineralizacje w pęcherzyku i drogach żółciowych": txt_wat += f" Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. {v_pech_zol} mm, z dość obfitym osadem mineralnym na dnie pęcherzyka/ z obecnością konglomeratów mineralnych śr. do ok. 4 mm. Drogi żółciowe lekko poszerzone, przewód żółciowy wspólny szer. do ok. 4 mm, w świetle drobne ogniska mineralizacji śr. do ok. 2 mm, nie powodujące niedrożności całkowitej. Układ wrotny bez uchwytnych zmian w budowie."
+    elif sel_pech_zol == "Mineralizacje w pęcherzyku żółciowym i drogach żółciowych": txt_wat += f" Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. {v_pech_zol} mm, z dość obfitym osadem mineralnym na dnie pęcherzyka/ z obecnością konglomeratów mineralnych śr. do ok. 4 mm. Drogi żółciowe lekko poszerzone, przewód żółciowy wspólny szer. do ok. 4 mm, w świetle drobne ogniska mineralizacji śr. do ok. 2 mm, nie powodujące niedrożności całkowitej. Układ wrotny bez uchwytnych zmian w budowie."
     elif sel_pech_zol == "Poszerzone drogi żółciowe": txt_wat += f" Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. do {v_pech_zol} mm. Przewód pęcherzykowy lekko poszerzony, do ok. 5 mm, w świetle aechogenna żółć, dalej pżw również nieco poszerzony, do ok. 4,5 mm, w świetle aechogenna żółć. Układ wrotny bez uchwytnych zmian w budowie."
     elif sel_pech_zol == "Polipy w pęcherzyku żółciowym": txt_wat += f" Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. {v_pech_zol} mm, z nieco zwiększoną ilością zagęszczeń żółci w świetle, zajmujących ok. 1/3 objętości pęcherzyka, bez cech niedrożności, widoczne również pojedyncze, polipowate struktury przyściennie, wys. do ok. 3 mm, bez cech hiperwaskularyzacji. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
     else: txt_wat += f" Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. {v_pech_zol} mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie."
@@ -572,7 +568,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     # 8. TRZUSTKA
     if sel_trzustka == "Ostre zapalenie trzustki": txt_trz = "Trzustka powiększona, gr. do ok. 15 mm na wysokości płata prawego, brzegi lekko nieregularne, miąższ o obniżonej echogeniczności w porównaniu z otaczającym tłuszczem, wokół narządu ostry odczyn zapalny. Przewód trzustkowy nieposzerzony."
     elif sel_trzustka == "Przebudowa przewlekła": txt_trz = f"Trzustka prawidłowej wielkości i kształtu, gr. ok. {v_trz} mm w płacie prawym, brzegi nieco nieregularne, struktura lekko niejednorodna, miąższ o niejednorodnej/ o podniesionej/ o obniżonej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony."
-    elif sel_trzustka == "Przebudowa przewlekła z poszerzonym przewodem": txt_trz = f"Trzustka prawidłowej wielkości i kształtu, gr. ok. {v_trz} mm w płacie lewym, brzegi nieco nieregularne, struktura dość jednorodna, miąższ o obniżonej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieregularnie poszerzony do ok. 2,5 mm, bez uchwytnych złogów w świetle."
+    elif sel_trzustka == "Przebudowa przewlekła z poszerzonym przewodem trzustkowym": txt_trz = f"Trzustka prawidłowej wielkości i kształtu, gr. ok. {v_trz} mm w płacie lewym, brzegi nieco nieregularne, struktura dość jednorodna, miąższ o obniżonej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieregularnie poszerzony do ok. 2,5 mm, bez uchwytnych złogów w świetle."
     else: txt_trz = szablony['trzustka'].format(trz=v_trz)
 
     # 9. PRZEWÓD POKARMOWY (Żołądek + Jelita jako jeden blok lub dwa w zależności od wyboru)
@@ -582,7 +578,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     if sel_pokarmowy == "Ostre zapalenie żołądka":
         txt_zol = "Żołądek poszerzony, w świetle zwiększona ilość gazu, aechogennego płynu i resztek treści, ściana o zachowanej warstwowości, pomiędzy fałdami pogrubiała do około 3,3 mm, w trzonie ok. 14 mm, nieco rozpulchniona warstwa śluzowa, obrzęk warstwy podśluzowej, ściana odźwiernika pogrubiała do ok. 6 mm, drożność zachowana, perystaltyka spowolniona. Wokół żołądka ostry odczyn zapalny, węzeł chłonny żołądkowy powiększony, śr. ok. 5 mm, wzbudzony zapalnie."
         txt_jel = szablony['jelita'].format(dwu=v_dwu, okr=v_okr)
-    elif sel_pokarmowy == "Refluks / Nadkwasota":
+    elif sel_pokarmowy == "Refluks":
         txt_zol = "Żołądek lekko poszerzony, w świetle zwiększona ilość aechogennego płynu i gazu (susp. nadkwasota/refluks), ściana o mniejszym pofałdowaniu, o zachowanej warstwowości, o prawidłowej grubości, pomiędzy fałdami do około 3,7 mm, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka lekko spowolniona, brak cech zapalenia ostrego."
         txt_jel = szablony['jelita'].format(dwu=v_dwu, okr=v_okr)
     elif sel_pokarmowy == "Przewlekłe zapalenie żołądka":
@@ -629,7 +625,7 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     if chk_klos:
         report_sections.append("Kłos: W badaniu USG okolicy międzypalcowej, pomiędzy palcem III i IV, prawej kończyny miednicznej obecny znaczny obrzęk tkanki podskórnej, pomiędzy tkankami obecna niewielka ilość wolnego płynu. W tkance podskórnej, od strony grzbietowej, w miejscu największego obrzęku, obecna podłużna, hiperechogenna struktura, dł. ok. 2 cm, na głębokości ok. 4 mm od skóry. Podejrzenie ciała obcego.")
     if chk_zmiana:
-        report_sections.append("Zmiana podskórna: Obecność zmiany podskórnej po stronie prawej w okolicy pośladka. Zmiana dobrze odgraniczona, owalna, dosyć regularnego kształtu, wielkości ok. 3,3 cm x 1,3 cm, jednorodna, w przewadze hiperechogenna względem otaczających tkanek, bez komponenty płynowej, bez cech hiperwaskularyzacji, nie powodująca efektu masy na okoliczne tkanki.")
+        report_sections.append("Zmiana podskórna: Obecność zmiany podskórnej po stronie prawej w okolicy pośladka. Zmiana dobrze odgraniczona, owalna, dosyć regularnego kształtu, wielkości ok. 3,3 cm x 1,3 cm, jednorodna, w przewadze hipoechogenna względem otaczających tkanek, bez komponenty płynowej, bez cech hiperwaskularyzacji, nie powodująca efektu masy na okoliczne tkanki.")
 
     mode2_final_report = "\n\n".join(report_sections)
     
