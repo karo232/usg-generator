@@ -190,7 +190,7 @@ def get_templates(gatunek):
             "nadnercza": "Nadnercza prawidłowej wielkości i kształtu, grubości około {nadn} mm, bez uchwytnych zmian w budowie.",
             "sledziona": "Śledziona prawidłowej wielkości, grubości około {spl} cm na wysokości trzonu narządu, miąższ jednorodny, drobnoziarnisty, bez zmian ogniskowych, torebka narządu gładka, hiperechogenna. Żyła śledzionowa nieposzerzona.",
             "zoladek": "Żołądek nieposzerzony, w świetle niewielka ilość gazu, ściana o zachowanej warstwowości, o prawidłowej grubości, pomiędzy fałdami do około {zol} mm, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka zachowana, brak cech zapalenia ostrego.",
-            "jelita": "Ściana dwunastnicy niepogrubiała, gr. ok. {dwu} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość płynnej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa. Światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka zachowana. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, gr. do ok. {okr} mm, okrężnica wypełniona uformowanymi masami kałowymi.",
+            "jelita": "Ściana dwunastnicy niepogrubiała, gr. ok. {dwu} mm, warstwowość zachowana, światło nieposzerzone, w świetle niewielka ilość płynnej treści, perystaltyka prawidłowa. Jelita cienkie o zachowanej warstwowości ściany, grubość ściany prawidłowa. Światło nieposzerzone, w świetle niewielka ilość strawionej treści, perystaltyka zachowana. Ujście BŚO bez zmian. Ściana okrężnicy o prawidłowej grubości i warstwowości, gr. do ok. {okr} mm, okrężnica wypeł্নে masami kałowymi.",
             "watroba": "Wątroba niepowiększona, miąższ gruboziarnisty, jednorodny, o prawidłowej echogeniczności, bez uchwytnych zmian ogniskowych, krawędzie narządu regularne. Naczynia wątrobowe nieposzerzone. Pęcherzyk żółciowy niepowiększony, ściana prawidłowej grubości i echogeniczności, gr. ok. {pech_zol} mm, bez uchwytnych złogów w świetle. Drogi żółciowe nieposzerzone. Układ wrotny bez uchwytnych zmian w budowie.",
             "trzustka": "Trzustka prawidłowej wielkości i kształtu, gr. ok. {trz} mm w płacie prawym, brzegi regularne, struktura niezmieniona, miąższ o prawidłowej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieposzerzony.",
             "wezly": "Węzły chłonne na terenie jamy brzusznej niepowiększone, bez uchwytnych zmian w budowie.",
@@ -472,7 +472,6 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         with col_w3: sel_trzustka = st.selectbox("Trzustka", pat_trzustka_options)
 
         st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
-        st.markdown("<h5 style='color: #135c7e; margin-bottom: 10px;'>4. PRZEWÓD POKARMOWY I SKÓRA:</h5>", unsafe_allow_html=True)
         col_pk1, col_pk2, col_pk3 = st.columns(3)
         with col_pk1: sel_zoladek = st.selectbox("Żołądek", pat_zoladek_options)
         with col_pk2: sel_jelita = st.selectbox("Jelita", pat_jelita_options)
