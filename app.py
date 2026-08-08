@@ -448,7 +448,8 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
     pat_watroba_options = ["Prawidłowa (Norma)", "Zwyrodnienie i przerost drobnoguzkowy wątroby", "Zmiany guzowate w miąższu wątroby", "Ostre zapalenie wątroby"]
     pat_pecherzyk_options = ["Prawidłowy (Norma)", "Ostre zapalenie pęcherzyka żółciowego", "Przewlekłe zapalenie pęcherzyka żółciowego", "Błotko w pęcherzyku żółciowym", "Mineralizacje w pęcherzyku żółciowym", "Mineralizacje w pęcherzyku żółciowym i drogach żółciowych", "Poszerzone drogi żółciowe", "Polipy w pęcherzyku żółciowym"]
     pat_trzustka_options = ["Prawidłowa (Norma)", "Ostre zapalenie trzustki", "Przebudowa przewlekła", "Przebudowa przewlekła z poszerzonym przewodem trzustkowym"]
-    pat_pokarmowy_options = ["Prawidłowy (Norma)", "Ostre zapalenie żołądka", "Refluks", "Przewlekłe zapalenie żołądka", "Ostre zapalenie jelit", "Zmiany w typie zaburzeń trawienia", "IBD", "Przewlekłe zapalenie jelit"]
+    pat_zoladek_options = ["Prawidłowy (Norma)", "Ostre zapalenie żołądka", "Refluks", "Przewlekłe zapalenie żołądka"]
+    pat_jelita_options = ["Prawidłowe (Norma)", "Ostre zapalenie jelit", "Zmiany w typie zaburzeń trawienia", "IBD", "Przewlekłe zapalenie jelit"]
     pat_skorne_options = ["Brak (Pomiń w opisie)", "Kłos", "Zmiana podskórna"]
 
     # ================= WYŚWIETLANIE LIST W KOLUMNACH =================
@@ -471,10 +472,12 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         with col_w3: sel_trzustka = st.selectbox("Trzustka", pat_trzustka_options)
 
         st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
-        col_pk1, col_pk2 = st.columns(2)
-        with col_pk1: sel_pokarmowy = st.selectbox("Przewód pokarmowy", pat_pokarmowy_options)
-        with col_pk2: sel_skora = st.selectbox("Zmiany skórne", pat_skorne_options)
-            
+        st.markdown("<h5 style='color: #135c7e; margin-bottom: 10px;'>4. PRZEWÓD POKARMOWY I SKÓRA:</h5>", unsafe_allow_html=True)
+        col_pk1, col_pk2, col_pk3 = st.columns(3)
+        with col_pk1: sel_zoladek = st.selectbox("Żołądek", pat_zoladek_options)
+        with col_pk2: sel_jelita = st.selectbox("Jelita", pat_jelita_options)
+        with col_pk3: sel_skora = st.selectbox("Zmiany skórne", pat_skorne_options)
+
     # ================= GENEROWANIE TEKSTÓW Z BAZY =================
     
     # 1. PĘCHERZ
@@ -601,44 +604,39 @@ elif tryb == "📏 TRYB 2: Tabela Wymiarów":
         txt_trz = f"Trzustka prawidłowej wielkości i kształtu, gr. ok. {val_trz} mm w płacie lewym, brzegi nieco nieregularne, struktura dość jednorodna, miąższ o obniżonej echogeniczności, bez cech zapalenia ostrego. Przewód trzustkowy nieregularnie poszerzony do ok. 2,5 mm, bez uchwytnych złogów w świetle."
     else: txt_trz = szablony['trzustka'].format(trz=norm_trz)
 
-    # 9. PRZEWÓD POKARMOWY (Żołądek + Jelita jako jeden blok)
-    txt_zol = ""
-    txt_jel = ""
+    # 9. PRZEWÓD POKARMOWY (Żołądek oddzielnie od Jelit)
     
-    if sel_pokarmowy == "Ostre zapalenie żołądka":
+    # 9A. ŻOŁĄDEK
+    if sel_zoladek == "Ostre zapalenie żołądka":
         val_zol = user_zol if user_zol else "3,3"
         txt_zol = f"Żołądek poszerzony, w świetle zwiększona ilość gazu, aechogennego płynu i resztek treści, ściana o zachowanej warstwowości, pomiędzy fałdami pogrubiała do około {val_zol} mm, w trzonie ok. 14 mm, nieco rozpulchniona warstwa śluzowa, obrzęk warstwy podśluzowej, ściana odźwiernika pogrubiała do ok. 6 mm, drożność zachowana, perystaltyka spowolniona. Wokół żołądka ostry odczyn zapalny, węzeł chłonny żołądkowy powiększony, śr. ok. 5 mm, wzbudzony zapalnie."
-        txt_jel = szablony['jelita'].format(dwu=norm_dwu, okr=norm_okr)
-    elif sel_pokarmowy == "Refluks":
+    elif sel_zoladek == "Refluks":
         val_zol = user_zol if user_zol else "3,7"
         txt_zol = f"Żołądek lekko poszerzony, w świetle zwiększona ilość aechogennego płynu i gazu (susp. nadkwasota/refluks), ściana o mniejszym pofałdowaniu, o zachowanej warstwowości, o prawidłowej grubości, pomiędzy fałdami do około {val_zol} mm, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka lekko spowolniona, brak cech zapalenia ostrego."
-        txt_jel = szablony['jelita'].format(dwu=norm_dwu, okr=norm_okr)
-    elif sel_pokarmowy == "Przewlekłe zapalenie żołądka":
+    elif sel_zoladek == "Przewlekłe zapalenie żołądka":
         val_zol = user_zol if user_zol else "3,6"
         txt_zol = f"Żołądek nieposzerzony, w świetle nieco zwiększona ilość płynnej treści i gazu, ściana o zachowanej warstwowości, niepogrubiała, pomiędzy fałdami do około {val_zol} mm, w trzonie ok. 4,3 mm, warstwa śluzowa o lekko podwyższonej echogeniczności, warstwa podśluzowa silniej zaznaczona, silniej echogenna, warstwa mięśniowa nieco pogrubiała na wysokości trzonu, do ok. 2 mm, okolica odźwiernika bez zmian, drożność zachowana, perystaltyka nieco spowolniona."
-        txt_jel = szablony['jelita'].format(dwu=norm_dwu, okr=norm_okr)
-    elif sel_pokarmowy == "Ostre zapalenie jelit":
+    else:
         txt_zol = szablony['zoladek'].format(zol=norm_zol)
+
+    # 9B. JELITA
+    if sel_jelita == "Ostre zapalenie jelit":
         val_dwu = user_dwu if user_dwu else "7"
         val_okr = user_okr if user_okr else "2,4"
         txt_jel = f"Ściana dwunastnicy lekko pogrubiała, gr. ok. {val_dwu} mm, warstwowość zachowana, warstwa śluzowa rozpulchniona, światło nieco poszerzone do ok. 7 mm, wypełnione zwiększoną ilością hiperechogennego, przelewającego się płynu oraz gazu, perystaltyka lekko spowolniona. Jelita cienkie co zachowanej warstwowości ściany, ściana pogrubiała do ok. 4,5 mm, warstwa śluzowa rozpulchniona, perystaltyka lekko spowolniona. Światło nieco odcinkowo poszerzone do ok. 10 mm, w świetle zwiększona ilość przelewającego się, hiperechogennego płynu oraz gazu. Lekki odczyn zapalny międzypętlowy, węzły chłonne jelita czczego powiększone, wzbudzone zapalnie, śr. ok. 8 mm. Ujście BŚO bez zmian. Ściana okrężnicy pogrubiała, o zachowanej warstwowości, gr. ok. {val_okr} mm, rozpulchnienie warstwy śluzowej, w świetle okrężnicy płynne masy kałowe i gaz."
-    elif sel_pokarmowy == "Zmiany w typie zaburzeń trawienia":
-        txt_zol = szablony['zoladek'].format(zol=norm_zol)
+    elif sel_jelita == "Zmiany w typie zaburzeń trawienia":
         val_dwu = user_dwu if user_dwu else "3,6"
         val_okr = user_okr if user_okr else "1,4"
         txt_jel = f"Ściana dwunastnicy niepogrubiała, gr. ok. {val_dwu} mm, warstwowość zachowana, światło nieposzerzone, wypełnione niewielką ilością płynnej, lekko przelewającej się treści oraz zwiększoną ilością gazu, perystaltyka lekko spowolniona. Reszta jelit cienkich o zachowanej warstwowości ściany, grubość ściany prawidłowa, perystaltyka lekko przyspieszona. Światło nieco odcinkowo poszerzone, do ok. 5 mm, w świetle zwiększona ilość odcinkowo przelewającego się, hiperechogennego płynu oraz gazu. Ujście BŚO bez zmian. Ściana okrężnicy o zachowanej warstwowości, niepogrubiała, do ok. {val_okr} mm, w świetle okrężnicy na wpół uformowane masy kałowe i gaz."
-    elif sel_pokarmowy == "IBD":
-        txt_zol = szablony['zoladek'].format(zol=norm_zol)
+    elif sel_jelita == "IBD":
         val_dwu = user_dwu if user_dwu else "3,4"
         val_okr = user_okr if user_okr else "1,8"
         txt_jel = f"Ściana dwunastnicy nieco pogrubiała, ok. {val_dwu} mm, warstwowość zachowana, warstwa podśluzowa silniej zaznaczona, światło nieposzerzone, próżne, perystaltyka prawidłowa. Reszta jelit cienkich o zachowanej warstwowości ściany, ściana lekko pogrubiała do ok. 3,4 mm, w jelicie biodrowym do ok. 3,6 mm, warstwa mięśniowa lekko pogrubiała do ok. 1,3 mm, w jelicie biodrowym do ok. 2 mm, warstwa podśluzowa silniej zaznaczona, perystaltyka zachowana. Światło nieposzerzone, wypełnione niewielką ilością płynnej treści. Węzły chłonne jelita czczego lekko powiększone, śr. ok. 4,8 mm, nieco reaktywne przewlekle, obecny umiarkowany, przewlekły odczyn zapalny międzypętlowy. Ujście BŚO bez uchwytnych zmian, wokół lekki, przewlekły odczyn zapalny, okoliczne węzły chłonne śr. ok. 4,2 mm, nieco wzbudzone zapalnie przewlekle. Ściana okrężnicy o prawidłowej grubości i warstwowości, ok. {val_okr} mm, okrężnica wypełniona uformowanymi masami kałowymi."
-    elif sel_pokarmowy == "Przewlekłe zapalenie jelit":
-        txt_zol = szablony['zoladek'].format(zol=norm_zol)
+    elif sel_jelita == "Przewlekłe zapalenie jelit":
         val_dwu = user_dwu if user_dwu else "3"
         val_okr = user_okr if user_okr else "1,8"
         txt_jel = f"Ściana dwunastnicy niepogrubiała, ok. {val_dwu} mm, warstwowość zachowana, warstwa śluzowa o lekko podwyższonej echogeniczności, światło nieposzerzone, w świetle niewielka ilość hiperechogennego, lekko przelewającego się płynu i gazu, perystaltyka lekko spowolniona. Reszta jelit cienkich o zachowanej warstwowości ściany, ściana lekko pogrubiała do ok. 3,4 mm, warstwa śluzowa o lekko podwyższonej echogeniczności, warstwa podśluzowa silniej zaznaczona, perystaltyka lekko przyspieszona. Światło nieposzerzone, wypełnione niewielką ilością płynnej, lekko przelewającej się treści i gazu. Węzły chłonne jelita czczego lekko powiększone, śr. ok. 4,8 mm, nieco reaktywne przewlekle, obecny umiarkowany, przewlekły odczyn zapalny międzypętlowy. Ujście BŚO bez uchwytnych zmian, wokół lekki, przewlekły odczyn zapalny, okoliczne węzły chłonne śr. ok. 4,2 mm, nieco wzbudzone zapalnie przewlekle. Ściana okrężnicy o prawidłowej grubości i warstwowości, ok. {val_okr} mm, okrężnica wypełniona uformowanymi masami kałowymi."
     else:
-        txt_zol = szablony['zoladek'].format(zol=norm_zol)
         txt_jel = szablony['jelita'].format(dwu=norm_dwu, okr=norm_okr)
 
     # =============== SKŁADANIE RAPORTU TRYBU 2 ===============
